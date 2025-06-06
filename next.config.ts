@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true
   },
+  output: 'export',
+  trailingSlash: true,
   /* config options here */
 };
 
