@@ -47,8 +47,27 @@ function PushNotificationManager() {
       ),
     });
     setSubscription(sub);
-    const serializedSub = JSON.parse(JSON.stringify(sub));
-    await subscribeUser(serializedSub);
+    
+    // Extraire les données nécessaires côté client
+    const subscriptionData = {
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(sub.getKey('p256dh')!),
+        auth: arrayBufferToBase64(sub.getKey('auth')!),
+      },
+    };
+    
+    await subscribeUser(subscriptionData);
+  }
+
+  // Fonction utilitaire pour convertir ArrayBuffer en base64 (côté client)
+  function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   async function unsubscribeFromPush() {

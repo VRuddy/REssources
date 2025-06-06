@@ -19,30 +19,11 @@ interface WebPushSubscription {
 
 let subscription: WebPushSubscription | null = null;
 
-export async function subscribeUser(sub: PushSubscription) {
-  // Convertir PushSubscription du navigateur vers le format attendu par web-push
-  const webPushSub: WebPushSubscription = {
-    endpoint: sub.endpoint,
-    keys: {
-      p256dh: arrayBufferToBase64(sub.getKey('p256dh')!),
-      auth: arrayBufferToBase64(sub.getKey('auth')!),
-    },
-  };
-  
-  subscription = webPushSub;
+export async function subscribeUser(sub: WebPushSubscription) {
+  subscription = sub;
   // In a production environment, you would want to store the subscription in a database
-  // For example: await db.subscriptions.create({ data: webPushSub })
+  // For example: await db.subscriptions.create({ data: sub })
   return { success: true };
-}
-
-// Fonction utilitaire pour convertir ArrayBuffer en base64
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }
 
 export async function unsubscribeUser() {
