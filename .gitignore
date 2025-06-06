@@ -39,3 +39,60 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor
+.capacitor/
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/proguard-rules.pro
+android/app/src/main/assets/public/
+android/app/src/main/res/drawable*/
+android/app/src/main/res/mipmap*/
+android/app/src/main/res/values*/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/App.xcarchive/
+ios/App/Podfile.lock
+
+# IDE - Android Studio
+*.iml
+.idea/
+.gradle/
+build/
+captures/
+.externalNativeBuild
+.cxx/
+*.apk
+*.ap_
+*.aab
+
+# IDE - Xcode
+*.xcworkspace/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+Thumbs.db
