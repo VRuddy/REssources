@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Camera as CameraIcon, RotateCw, Settings, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Camera as CameraIcon, RotateCw } from 'lucide-react'
 
 interface CameraProps {
   onBack: () => void
 }
-
-type PermissionState = 'prompt' | 'granted' | 'denied' | 'unknown'
 
 export default function CameraComponent({ onBack }: CameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -19,8 +17,6 @@ export default function CameraComponent({ onBack }: CameraProps) {
   const [isCapacitor, setIsCapacitor] = useState(false)
   const [canSwitchCamera, setCanSwitchCamera] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
-  const [permissionState, setPermissionState] = useState<PermissionState>('unknown')
-  const [showPermissionHelp, setShowPermissionHelp] = useState(false)
 
   // Détecter Capacitor
   useEffect(() => {
@@ -28,130 +24,23 @@ export default function CameraComponent({ onBack }: CameraProps) {
       try {
         if (typeof window !== 'undefined' && (window as Window & { Capacitor?: unknown }).Capacitor) {
           setIsCapacitor(true)
-          setCanSwitchCamera(true)
-          await checkCameraPermissions()
-        } else {
-          setIsCapacitor(false)
-          await checkWebPermissions()
+          setCanSwitchCamera(true) // Capacitor permet toujours le changement
         }
       } catch {
         setIsCapacitor(false)
-        await checkWebPermissions()
       }
     }
     
     checkCapacitor()
   }, [])
 
-  // Vérifier permissions Capacitor
-  const checkCameraPermissions = async () => {
-    try {
-      const { Camera } = await import('@capacitor/camera')
-      
-      // Vérifier les permissions actuelles
-      const permissions = await Camera.checkPermissions()
-      
-      if (permissions.camera === 'granted') {
-        setPermissionState('granted')
-        setIsLoading(false)
-      } else if (permissions.camera === 'denied') {
-        setPermissionState('denied')
-        setError('Permission caméra refusée. Vous devez autoriser l&apos;accès dans les paramètres.')
-        setShowPermissionHelp(true)
-        setIsLoading(false)
-      } else {
-        // Permission pas encore demandée
-        await requestCameraPermissions()
-      }
-    } catch (err) {
-      console.error('Erreur vérification permissions:', err)
-      setError('Impossible de vérifier les permissions caméra.')
-      setIsLoading(false)
-    }
-  }
-
-  // Demander permissions Capacitor
-  const requestCameraPermissions = async () => {
-    try {
-      const { Camera } = await import('@capacitor/camera')
-      
-      const permissions = await Camera.requestPermissions()
-      
-      if (permissions.camera === 'granted') {
-        setPermissionState('granted')
-        setError(null)
-        setShowPermissionHelp(false)
-        setIsLoading(false)
-      } else {
-        setPermissionState('denied')
-        setError('Permission caméra refusée. L&apos;accès à la caméra est nécessaire pour cette fonctionnalité.')
-        setShowPermissionHelp(true)
-        setIsLoading(false)
-      }
-    } catch (err) {
-      console.error('Erreur demande permissions:', err)
-      setError('Impossible de demander les permissions caméra.')
-      setIsLoading(false)
-    }
-  }
-
-  // Vérifier permissions Web
-  const checkWebPermissions = async () => {
-    try {
-      const permissionStatus = await navigator.permissions.query({name: 'camera' as PermissionName})
-      
-      setPermissionState(permissionStatus.state as PermissionState)
-      
-      if (permissionStatus.state === 'granted') {
-        setIsLoading(false)
-        // Démarrer la caméra web automatiquement si permission accordée
-        await startWebCamera()
-      } else if (permissionStatus.state === 'denied') {
-        setError('Permission caméra refusée dans le navigateur.')
-        setShowPermissionHelp(true)
-        setIsLoading(false)
-      } else {
-        setIsLoading(false)
-      }
-      
-      // Écouter les changements de permission
-      permissionStatus.onchange = () => {
-        setPermissionState(permissionStatus.state as PermissionState)
-        if (permissionStatus.state === 'granted') {
-          setError(null)
-          setShowPermissionHelp(false)
-          startWebCamera()
-        }
-      }
-    } catch (err) {
-      console.error('Erreur permissions web:', err)
-      setIsLoading(false)
-    }
-  }
-
-  // Ouvrir les paramètres système (Capacitor)
-  const openAppSettings = async () => {
-    try {
-      if (isCapacitor) {
-        const { App } = await import('@capacitor/app')
-        await App.openSettingsApp()
-      }
-    } catch (err) {
-      console.error('Impossible d&apos;ouvrir les paramètres:', err)
-    }
-  }
-
   // Pour Capacitor - Prendre une photo
   const takeCapacitorPhoto = async () => {
-    if (permissionState !== 'granted') {
-      await requestCameraPermissions()
-      return
-    }
-
     try {
       setIsLoading(true)
       setError(null)
 
+      // Import dynamique de Capacitor
       const { Camera } = await import('@capacitor/camera')
       
       const image = await Camera.getPhoto({
@@ -169,12 +58,7 @@ export default function CameraComponent({ onBack }: CameraProps) {
       setIsLoading(false)
     } catch (err: unknown) {
       console.error('Erreur Capacitor Camera:', err)
-      
-      if (err instanceof Error && err.message.includes('permission')) {
-        await checkCameraPermissions()
-      } else {
-        setError('Impossible d&apos;accéder à la caméra native.')
-      }
+      setError('Impossible d&apos;accéder à la caméra native.')
       setIsLoading(false)
     }
   }
@@ -206,9 +90,6 @@ export default function CameraComponent({ onBack }: CameraProps) {
       }
 
       setStream(mediaStream)
-      setPermissionState('granted')
-      setError(null)
-      setShowPermissionHelp(false)
       setIsLoading(false)
     } catch (err: unknown) {
       console.error('Erreur Web Camera:', err)
@@ -217,9 +98,7 @@ export default function CameraComponent({ onBack }: CameraProps) {
       
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          errorMessage = 'Permission caméra refusée. Cliquez sur l&apos;icône caméra dans la barre d&apos;adresse.'
-          setPermissionState('denied')
-          setShowPermissionHelp(true)
+          errorMessage = 'Permission caméra refusée. Vérifiez les paramètres de votre navigateur.'
         } else if (err.name === 'NotFoundError') {
           errorMessage = 'Aucune caméra trouvée sur cet appareil.'
         } else if (err.name === 'NotReadableError') {
@@ -234,7 +113,7 @@ export default function CameraComponent({ onBack }: CameraProps) {
 
   // Vérifier les caméras disponibles pour le web
   useEffect(() => {
-    if (!isCapacitor && permissionState === 'granted') {
+    if (!isCapacitor) {
       const checkWebCameras = async () => {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices()
@@ -246,11 +125,15 @@ export default function CameraComponent({ onBack }: CameraProps) {
       }
       checkWebCameras()
     }
-  }, [isCapacitor, permissionState])
+  }, [isCapacitor])
 
   // Initialiser la caméra selon l'environnement
   useEffect(() => {
-    if (!isCapacitor && permissionState === 'granted') {
+    if (isCapacitor) {
+      // Pour Capacitor, on ne démarre pas automatiquement
+      setIsLoading(false)
+    } else {
+      // Pour le web, démarrer getUserMedia
       startWebCamera()
     }
 
@@ -259,7 +142,7 @@ export default function CameraComponent({ onBack }: CameraProps) {
         stream.getTracks().forEach(track => track.stop())
       }
     }
-  }, [facingMode, isCapacitor, permissionState])
+  }, [facingMode, isCapacitor])
 
   const handleBack = () => {
     if (stream) {
@@ -269,9 +152,9 @@ export default function CameraComponent({ onBack }: CameraProps) {
   }
 
   const switchCamera = () => {
-    if (canSwitchCamera && permissionState === 'granted') {
+    if (canSwitchCamera) {
       setFacingMode(prev => prev === 'user' ? 'environment' : 'user')
-      setCapturedImage(null)
+      setCapturedImage(null) // Reset image capturée
     }
   }
 
@@ -279,82 +162,26 @@ export default function CameraComponent({ onBack }: CameraProps) {
     setCapturedImage(null)
   }
 
-  // Affichage aide permissions
-  const PermissionHelp = () => (
-    <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mt-4">
-      <div className="flex items-start space-x-3">
-        <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
-        <div className="space-y-2">
-          <h4 className="font-semibold text-orange-800 dark:text-orange-200">
-            Comment autoriser la caméra :
-          </h4>
-          
-          {isCapacitor ? (
-            <div className="text-sm text-orange-700 dark:text-orange-300 space-y-1">
-              <p><strong>📱 Sur mobile :</strong></p>
-              <p>1. Appuyez sur &apos;Ouvrir paramètres&apos; ci-dessous</p>
-              <p>2. Trouvez cette application dans la liste</p>
-              <p>3. Activez l&apos;autorisation &apos;Appareil photo&apos;</p>
-              <p>4. Revenez dans l&apos;application</p>
-              
-              <Button 
-                onClick={openAppSettings} 
-                variant="outline" 
-                size="sm" 
-                className="mt-2 bg-orange-100 hover:bg-orange-200 border-orange-300"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Ouvrir paramètres
-              </Button>
-            </div>
-          ) : (
-            <div className="text-sm text-orange-700 dark:text-orange-300 space-y-1">
-              <p><strong>💻 Sur navigateur :</strong></p>
-              <p>1. Cliquez sur l&apos;icône 🔒 ou 📷 dans la barre d&apos;adresse</p>
-              <p>2. Sélectionnez &apos;Autoriser&apos; pour la caméra</p>
-              <p>3. Rechargez la page si nécessaire</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background">
-        <div className="text-center space-y-4 max-w-md">
+        <div className="text-center space-y-4">
           <CameraIcon className="w-16 h-16 mx-auto text-muted-foreground" />
-          <h2 className="text-2xl font-semibold">Caméra non disponible</h2>
+          <h2 className="text-2xl font-semibold">Erreur caméra</h2>
           <p className="text-muted-foreground text-sm px-4">{error}</p>
-          
-          <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-lg">
+          <div className="text-xs text-muted-foreground space-y-1">
             <p>🔧 Environnement: {isCapacitor ? 'Capacitor (Native)' : 'Web'}</p>
-            <p>📋 Permission: {permissionState}</p>
-          </div>
-
-          {showPermissionHelp && <PermissionHelp />}
-
-          <div className="flex gap-2 justify-center">
-            {permissionState === 'denied' && !isCapacitor && (
-              <Button onClick={() => startWebCamera()} variant="outline">
-                <CameraIcon className="w-4 h-4 mr-2" />
-                Réessayer
-              </Button>
+            {!isCapacitor && (
+              <>
+                <p>• Autoriser l&apos;accès caméra dans les paramètres</p>
+                <p>• Recharger la page si nécessaire</p>
+              </>
             )}
-            
-            {permissionState === 'denied' && isCapacitor && (
-              <Button onClick={() => checkCameraPermissions()} variant="outline">
-                <CameraIcon className="w-4 h-4 mr-2" />
-                Vérifier permissions
-              </Button>
-            )}
-
-            <Button onClick={handleBack} variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Retour
-            </Button>
           </div>
+          <Button onClick={handleBack} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
         </div>
       </div>
     )
@@ -374,11 +201,11 @@ export default function CameraComponent({ onBack }: CameraProps) {
             Caméra {isCapacitor ? '📱' : '💻'}
           </h1>
           <p className="text-xs text-white/60">
-            {facingMode === 'user' ? 'Avant' : 'Arrière'} • {permissionState}
+            {facingMode === 'user' ? 'Avant' : 'Arrière'}
           </p>
         </div>
         
-        {canSwitchCamera && permissionState === 'granted' && (
+        {canSwitchCamera && (
           <Button 
             onClick={switchCamera} 
             variant="ghost" 
@@ -406,14 +233,14 @@ export default function CameraComponent({ onBack }: CameraProps) {
           )}
 
           {/* Caméra web en direct */}
-          {!isCapacitor && !capturedImage && permissionState === 'granted' && (
+          {!isCapacitor && !capturedImage && (
             <>
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
                   <div className="text-center space-y-2">
                     <CameraIcon className="w-8 h-8 mx-auto animate-pulse" />
                     <p className="text-sm text-muted-foreground">
-                      Initialisation caméra...
+                      Chargement caméra web...
                     </p>
                   </div>
                 </div>
@@ -431,7 +258,7 @@ export default function CameraComponent({ onBack }: CameraProps) {
           )}
 
           {/* Placeholder Capacitor */}
-          {isCapacitor && !capturedImage && !isLoading && permissionState === 'granted' && (
+          {isCapacitor && !capturedImage && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
               <div className="text-center space-y-4">
                 <CameraIcon className="w-16 h-16 mx-auto text-muted-foreground" />
@@ -439,21 +266,6 @@ export default function CameraComponent({ onBack }: CameraProps) {
                   <h3 className="text-lg font-semibold">Caméra Native</h3>
                   <p className="text-sm text-muted-foreground">
                     Appuyez pour prendre une photo
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attente permissions */}
-          {permissionState !== 'granted' && !error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
-              <div className="text-center space-y-4">
-                <CameraIcon className="w-16 h-16 mx-auto text-muted-foreground animate-pulse" />
-                <div>
-                  <h3 className="text-lg font-semibold">Permission requise</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {isCapacitor ? 'Autorisation caméra nécessaire' : 'Cliquez pour autoriser la caméra'}
                   </p>
                 </div>
               </div>
@@ -478,41 +290,26 @@ export default function CameraComponent({ onBack }: CameraProps) {
                   onClick={takeCapacitorPhoto} 
                   variant="default" 
                   size="lg"
-                  disabled={isLoading || permissionState !== 'granted'}
+                  disabled={isLoading}
                   className="bg-white text-black hover:bg-gray-200"
                 >
                   <CameraIcon className="w-5 h-5 mr-2" />
-                  {permissionState !== 'granted' ? 'Autoriser caméra' : 
-                   isLoading ? 'Chargement...' : 'Prendre une photo'}
+                  {isLoading ? 'Chargement...' : 'Prendre une photo'}
                 </Button>
               )}
             </>
           ) : (
             // Contrôles Web
-            <>
-              {permissionState !== 'granted' ? (
-                <Button 
-                  onClick={startWebCamera} 
-                  variant="default" 
-                  size="lg"
-                  className="bg-white text-black hover:bg-gray-200"
-                >
-                  <CameraIcon className="w-5 h-5 mr-2" />
-                  Autoriser caméra
-                </Button>
-              ) : (
-                <div className="text-center">
-                  <p className="text-xs text-white/70">
-                    Caméra web en direct - {facingMode === 'user' ? '🤳 Selfie' : '📷 Normale'}
-                  </p>
-                  {canSwitchCamera && (
-                    <p className="text-xs text-white/50 mt-1">
-                      Utilisez ↻ pour changer de caméra
-                    </p>
-                  )}
-                </div>
+            <div className="text-center">
+              <p className="text-xs text-white/70">
+                Caméra web en direct - {facingMode === 'user' ? '🤳 Selfie' : '📷 Normale'}
+              </p>
+              {canSwitchCamera && (
+                <p className="text-xs text-white/50 mt-1">
+                  Utilisez ↻ pour changer de caméra
+                </p>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
