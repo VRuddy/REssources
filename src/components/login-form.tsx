@@ -35,10 +35,10 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
         password,
       })
       if (error) throw error
-      // Update this route to redirect to an authenticated route. The user already has an active session.
+      // Modifiez cette route pour rediriger vers une page authentifiée. L'utilisateur a déjà une session active.
       router.push('/blog-list')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      setError(error instanceof Error ? error.message : 'Une erreur est survenue')
     } finally {
       setIsLoading(false)
     }
@@ -48,8 +48,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your email below to login to your account</CardDescription>
+          <CardTitle className="text-2xl">Connexion</CardTitle>
+          <CardDescription>Entrez votre email ci-dessous pour vous connecter à votre compte</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
@@ -67,12 +67,12 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Mot de passe</Label>
                   <Link
                     href="/auth/forgot-password"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
-                    Forgot your password?
+                    Mot de passe oublié ?
                   </Link>
                 </div>
                 <Input
@@ -85,13 +85,13 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Logging in...' : 'Login'}
+                {isLoading ? 'Connexion...' : 'Se connecter'}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{' '}
+              Vous n&apos;avez pas de compte ?{' '}
               <Link href="/auth/sign-up" className="underline underline-offset-4">
-                Sign up
+                Inscrivez-vous
               </Link>
             </div>
           </form>
