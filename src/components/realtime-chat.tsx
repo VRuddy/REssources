@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface RealtimeChatProps {
@@ -55,6 +55,8 @@ export const RealtimeChat = ({
   const [newMessage, setNewMessage] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set())
+  const previousMessageCount = useRef(0)
+  const shouldScrollToBottom = useRef(true)
 
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
@@ -76,14 +78,20 @@ export const RealtimeChat = ({
   }, [allMessages, onMessage])
 
   useEffect(() => {
-    // Scroll to bottom whenever messages change
-    scrollToBottom()
+    // Scroll to bottom seulement si de nouveaux messages sont ajoutés ET si shouldScrollToBottom est true
+    if (allMessages.length > previousMessageCount.current && shouldScrollToBottom.current) {
+      scrollToBottom()
+    }
+    previousMessageCount.current = allMessages.length
   }, [allMessages, scrollToBottom])
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newMessage.trim() || !isConnected) return;
+
+      // Activer le scroll automatique lors de l'envoi d'un message
+      shouldScrollToBottom.current = true;
 
       sendMessage(newMessage, replyTo);
       // Enregistre le message dans Supabase
@@ -119,6 +127,9 @@ export const RealtimeChat = ({
 
   // Fonction pour basculer l'état collapsed d'un thread
   const toggleThreadCollapse = useCallback((messageId: number) => {
+    // Désactiver le scroll automatique lors du collapse/expand
+    shouldScrollToBottom.current = false;
+    
     setCollapsedThreads(prev => {
       const newSet = new Set(prev)
       if (newSet.has(messageId)) {
@@ -128,6 +139,13 @@ export const RealtimeChat = ({
       }
       return newSet
     })
+  }, [])
+
+  // Fonction pour répondre à un message
+  const handleReplyToMessage = useCallback((messageId: number) => {
+    // Désactiver le scroll automatique lors de la réponse
+    shouldScrollToBottom.current = false;
+    setReplyTo(messageId);
   }, [])
 
   // Composant récursif pour afficher les threads
@@ -140,11 +158,11 @@ export const RealtimeChat = ({
           const replyCount = message.replies ? message.replies.length : 0
           
           return (
-            <div key={message.id}>
+            <div key={message.id} data-message-id={message.id}>
               <ChatMessageItem
                 message={message}
                 isOwnMessage={message.user.name === username}
-                onReply={setReplyTo}
+                onReply={handleReplyToMessage}
                 level={level}
                 isCollapsed={isCollapsed}
                 onToggleCollapse={() => toggleThreadCollapse(message.id as number)}
@@ -204,7 +222,10 @@ export const RealtimeChat = ({
             <Button 
               size="sm" 
               variant="ghost" 
-              onClick={() => setReplyTo(null)}
+              onClick={() => {
+                setReplyTo(null);
+                shouldScrollToBottom.current = true; // Réactiver le scroll quand on annule
+              }}
               className="h-auto p-1 hover:bg-destructive/10 hover:text-destructive"
             >
               <X className="w-4 h-4" />

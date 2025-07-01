@@ -35,36 +35,82 @@ export const ChatMessageItem = ({
     return `${Math.floor(diffInMinutes / 1440)}j`
   }
 
+  // Couleurs progressives pour les niveaux de threads
+  const getThreadColor = (level: number) => {
+    const colors = [
+      'border-blue-200',
+      'border-green-200', 
+      'border-purple-200',
+      'border-orange-200',
+      'border-pink-200'
+    ]
+    return colors[level % colors.length] || 'border-gray-200'
+  }
+
   return (
     <div className={cn(
-      "group relative border-l-2 border-transparent hover:border-muted-foreground/20 transition-colors",
-      level > 0 && "ml-6 border-l-border/50"
+      "group relative transition-colors",
+      level > 0 && "ml-4",
+      level > 0 && `border-l-2 ${getThreadColor(level - 1)} pl-4`
     )}>
-      {/* Thread line connector for replies */}
+      {/* Thread line connector amélioré pour les réponses */}
       {level > 0 && (
-        <div className="absolute -left-2 top-0 w-4 h-6 border-l-2 border-b-2 border-border/50 rounded-bl-lg" />
+        <div className={cn(
+          "absolute -left-0 top-0 w-4 h-8 border-l-2 border-b-2 rounded-bl-lg",
+          getThreadColor(level - 1)
+        )} />
       )}
       
       <div className={cn(
-        "flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors",
-        level > 0 && "pl-6"
+        "flex gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors relative",
+        level > 0 && "bg-muted/10"
       )}>
+        {/* Badge de niveau pour les threads profonds */}
+        {level > 0 && (
+          <div className={cn(
+            "absolute -left-2 top-2 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white text-[10px]",
+            level === 1 && "bg-blue-400",
+            level === 2 && "bg-green-400", 
+            level === 3 && "bg-purple-400",
+            level >= 4 && "bg-orange-400"
+          )}>
+            {level}
+          </div>
+        )}
+
         {/* Avatar placeholder */}
         <div className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0",
           isOwnMessage 
             ? "bg-primary" 
-            : "bg-gradient-to-br from-blue-500 to-purple-600"
+            : level === 0 
+              ? "bg-gradient-to-br from-blue-500 to-purple-600"
+              : level === 1
+                ? "bg-gradient-to-br from-green-500 to-blue-500"
+                : level === 2
+                  ? "bg-gradient-to-br from-purple-500 to-pink-500"
+                  : "bg-gradient-to-br from-orange-500 to-red-500"
         )}>
           {message.user.name.charAt(0).toUpperCase()}
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Header with user info and time */}
+          {/* Header avec indicateur de niveau */}
           <div className="flex items-center gap-2 mb-1">
             <span className="font-semibold text-sm text-foreground">
               {message.user.name}
             </span>
+            {level > 0 && (
+              <span className={cn(
+                "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                level === 1 && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                level === 2 && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+                level === 3 && "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+                level >= 4 && "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+              )}>
+                réponse {level > 1 ? `niv.${level}` : ''}
+              </span>
+            )}
             <span className="text-xs text-muted-foreground">
               {formatTime(message.createdAt)}
             </span>
@@ -73,8 +119,12 @@ export const ChatMessageItem = ({
             )}
           </div>
 
-          {/* Message content */}
-          <div className="text-sm text-foreground leading-relaxed mb-2">
+          {/* Message content avec style différent selon le niveau */}
+          <div className={cn(
+            "text-sm leading-relaxed mb-2",
+            level === 0 ? "text-foreground" : "text-foreground/90",
+            level > 2 && "text-sm text-foreground/80"
+          )}>
             {message.content}
           </div>
 
