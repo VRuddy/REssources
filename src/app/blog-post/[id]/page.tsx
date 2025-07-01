@@ -11,7 +11,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
   // Récupère la ressource avec la catégorie et l'auteur
   const { data: post } = await supabase
     .from("resources")
-    .select("id, title, content, created_at, categories(name), users(display_name)")
+    .select("id, title, content, created_at, categories(name), users(firstname, lastname)")
     .eq("id", Number(id))
     .single();
 
@@ -20,7 +20,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
   // Récupère les commentaires pour ce post
   const { data: comments } = await supabase
     .from("comments")
-    .select("id, content, created_at, author_id, parent_comment_id, users(display_name)")
+    .select("id, content, created_at, author_id, parent_comment_id, users(firstname, lastname)")
     .eq("resource_id", Number(id))
     .order("created_at", { ascending: true });
 
@@ -30,7 +30,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
     content: c.content,
     createdAt: c.created_at || '',
     parent_comment_id: c.parent_comment_id,
-    user: { name: c.users?.display_name || "Anonyme", id: c.author_id },
+    user: { name: c.users?.firstname || "Anonyme", id: c.author_id },
   }));
 
   // Passe la liste plate à RealtimeChat (PAS d'appel à buildThread ici)
@@ -42,7 +42,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         summary={post.content?.slice(0, 120) || ""}
         content={post.content}
         author={{
-          name: post.users?.display_name || "Anonyme",
+          name: post.users?.firstname || "Anonyme",
           // avatarUrl: post.users?.avatar_url, // décommente si tu as ce champ
           role: "Auteur",
         }}
@@ -53,7 +53,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         <h2 className="text-2xl font-bold mb-4 text-center">Commentaires</h2>
         <RealtimeChat
           roomName={`blog-post-${post.id}`}
-          username={user?.user_metadata?.display_name || post.users?.display_name || "Anonyme"}
+          username={ "Anonyme"}
           userId={user?.id || ""}
           resourceId={post.id}
           messages={flatMessages}
