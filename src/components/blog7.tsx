@@ -9,6 +9,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import Image from "next/image";
 
 export interface Post {
   id: string;
@@ -103,7 +104,9 @@ const Blog7 = ({
                   href={post.url}
                   className="transition-opacity duration-200 fade-in hover:opacity-70"
                 >
-                  <img
+                  <Image
+                  width={600}
+                  height={400}
                     src={post.image}
                     alt={post.title}
                     className="h-full w-full object-cover object-center"

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Hero45 } from "@/components/hero45";
-import { Blog7, Blog7Props, Post } from "@/components/blog7";
+import { Blog7, Blog7Props } from "@/components/blog7";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Page() {

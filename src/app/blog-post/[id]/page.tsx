@@ -4,14 +4,15 @@ import { BlogPost } from "@/components/blog-post/BlogPost";
 import { RealtimeChat } from "@/components/realtime-chat";
 import { getAuthUser } from "@/app/helper/get-user";
 
-export default async function BlogPostPage({ params }: { params: { id: string } }) {
+export default async function BlogPostPage({params}: {params: Promise<{ id: string }>}) {
   const supabase = await createClient();
   const user = await getAuthUser();
+  const { id } = await params;
   // Récupère la ressource avec la catégorie et l'auteur
   const { data: post } = await supabase
     .from("resources")
     .select("id, title, content, created_at, categories(name), users(display_name)")
-    .eq("id", Number(params.id))
+    .eq("id", Number(id))
     .single();
 
   if (!post) return notFound();
@@ -20,7 +21,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
   const { data: comments } = await supabase
     .from("comments")
     .select("id, content, created_at, author_id, parent_comment_id, users(display_name)")
-    .eq("resource_id", Number(params.id))
+    .eq("resource_id", Number(id))
     .order("created_at", { ascending: true });
 
   // On mappe les commentaires pour inclure parent_comment_id et user

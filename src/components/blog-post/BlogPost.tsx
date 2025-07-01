@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 interface BlogPostProps {
   title: string;
@@ -24,7 +24,6 @@ export function BlogPost({
   author,
   date,
   readTime = "10 min read",
-  categories = [],
   breadcrumbs = [
     { label: "Resources", href: "#" },
     { label: "Blogs", href: "#" },
@@ -91,7 +90,11 @@ export function BlogPost({
             <div className="flex items-center gap-2.5">
               <span className="relative flex shrink-0 overflow-hidden rounded-full size-12 border">
                 {author.avatarUrl ? (
-                  <img className="aspect-square size-full" alt={author.name} src={author.avatarUrl} />
+                  <Image
+                    width={48}
+                    height={48}
+                   className="aspect-square size-full" alt={author.name} src={author.avatarUrl} />
+                  
                 ) : (
                   <span className="size-full flex items-center justify-center bg-muted text-muted-foreground">{author.name[0]}</span>
                 )}

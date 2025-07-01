@@ -95,17 +95,22 @@ export const RealtimeChat = ({
     [newMessage, isConnected, sendMessage, userId, resourceId, replyTo]
   )
 
+  // Define a threaded message type
+  interface ThreadedMessage extends ChatMessage {
+    replies: ThreadedMessage[];
+  }
+
   // Fonction pour organiser les messages en threads
-  function buildThread(messages: ChatMessage[], parent_comment_id: number | null = null): any[] {
+  const buildThread = useCallback((messages: ChatMessage[], parent_comment_id: number | null = null): ThreadedMessage[] => {
     return messages
       .filter((msg) => (msg.parent_comment_id ?? null) === parent_comment_id)
       .map((msg) => ({
         ...msg,
         replies: buildThread(messages, msg.id),
       }))
-  }
+  }, []);
 
-  const threadedMessages = useMemo(() => buildThread(allMessages), [allMessages])
+  const threadedMessages = useMemo(() => buildThread(allMessages), [allMessages, buildThread])
 
   // Trouver le message parent pour l'affichage de la réponse
   function findMessageById(messages: ChatMessage[], id: number | null): ChatMessage | undefined {
@@ -113,7 +118,7 @@ export const RealtimeChat = ({
   }
 
   // Nouveau composant récursif pour afficher les threads
-  function Thread({ messages }: { messages: any[] }) {
+  function Thread({ messages }: { messages: ThreadedMessage[] }) {
     return (
       <div className="space-y-2">
         {messages.map((message) => {
@@ -122,7 +127,7 @@ export const RealtimeChat = ({
             <div key={message.id} className="ml-0">
               {parent && (
                 <div className="ml-2 mb-1 border-l-2 border-muted pl-2 text-xs text-muted-foreground italic bg-muted/40 rounded">
-                  En réponse à : <span className="font-semibold">{parent.user.name}</span> : "{parent.content.slice(0, 80)}{parent.content.length > 80 ? '…' : ''}"
+                  En réponse à : <span className="font-semibold">{parent.user.name}</span> : {parent.content.slice(0, 80)}{parent.content.length > 80 ? '…' : ''}
                 </div>
               )}
               <ChatMessageItem

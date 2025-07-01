@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Feature {
   icon: React.ReactNode;
@@ -57,12 +58,14 @@ const Hero45 = ({
               <Link href="/auth/login">Se connecter</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/auth/sign-up">S'inscrire</Link>
+              <Link href="/auth/sign-up">S&apos;inscrire</Link>
             </Button>
           </div>
         </div>
         <div className="relative mx-auto max-w-5xl">
-          <img
+          <Image
+            width={600}
+            height={400}
             src={imageSrc}
             alt={imageAlt}
             className="aspect-video max-h-[500px] w-full rounded-xl object-cover"
