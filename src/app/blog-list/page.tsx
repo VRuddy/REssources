@@ -17,7 +17,7 @@ export default function BlogListPage() {
       // Récupère les ressources avec leur catégorie et le display_name du créateur
       const { data: resources } = await supabase
         .from("resources")
-        .select("id, title, content, created_at, owner_id, category_id, categories(name), users(display_name)")
+        .select("id, title, content, created_at, owner_id, category_id, categories(name), users(firstname, lastname)")
         .order("created_at", { ascending: false });
       // Mapping pour BlogList
       const mapped = (resources || []).map((r) => ({
@@ -25,7 +25,7 @@ export default function BlogListPage() {
         category: r.categories?.name || "Ressource",
         title: r.title,
         summary: r.content?.slice(0, 120) || "",
-        author: r.users?.display_name || "Anonyme",
+        author: r.users?.firstname || "Anonyme",
         date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
         url: `/blog-post/${r.id}`,
       }));
