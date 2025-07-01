@@ -1,6 +1,5 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import { ChatMessageItem } from '@/components/chat-message'
 import { useChatScroll } from '@/hooks/use-chat-scroll'
 import {
@@ -9,8 +8,8 @@ import {
 } from '@/hooks/use-realtime-chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Send, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface RealtimeChatProps {
@@ -20,6 +19,11 @@ interface RealtimeChatProps {
   resourceId: number;
   onMessage?: (messages: ChatMessage[]) => void;
   messages?: ChatMessage[];
+}
+
+// Define a threaded message type
+interface ThreadedMessage extends ChatMessage {
+  replies: ThreadedMessage[];
 }
 
 /**
@@ -50,6 +54,9 @@ export const RealtimeChat = ({
   })
   const [newMessage, setNewMessage] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
+  const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set())
+  const previousMessageCount = useRef(0)
+  const shouldScrollToBottom = useRef(true)
 
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
@@ -71,14 +78,20 @@ export const RealtimeChat = ({
   }, [allMessages, onMessage])
 
   useEffect(() => {
-    // Scroll to bottom whenever messages change
-    scrollToBottom()
+    // Scroll to bottom seulement si de nouveaux messages sont ajoutés ET si shouldScrollToBottom est true
+    if (allMessages.length > previousMessageCount.current && shouldScrollToBottom.current) {
+      scrollToBottom()
+    }
+    previousMessageCount.current = allMessages.length
   }, [allMessages, scrollToBottom])
 
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newMessage.trim() || !isConnected) return;
+
+      // Activer le scroll automatique lors de l'envoi d'un message
+      shouldScrollToBottom.current = true;
 
       sendMessage(newMessage, replyTo);
       // Enregistre le message dans Supabase
@@ -94,11 +107,6 @@ export const RealtimeChat = ({
     },
     [newMessage, isConnected, sendMessage, userId, resourceId, replyTo]
   )
-
-  // Define a threaded message type
-  interface ThreadedMessage extends ChatMessage {
-    replies: ThreadedMessage[];
-  }
 
   // Fonction pour organiser les messages en threads
   const buildThread = useCallback((messages: ChatMessage[], parent_comment_id: number | null = null): ThreadedMessage[] => {
@@ -117,33 +125,52 @@ export const RealtimeChat = ({
     return messages.find((msg) => msg.id === id)
   }
 
-  // Nouveau composant récursif pour afficher les threads
-  function Thread({ messages }: { messages: ThreadedMessage[] }) {
+  // Fonction pour basculer l'état collapsed d'un thread
+  const toggleThreadCollapse = useCallback((messageId: number) => {
+    // Désactiver le scroll automatique lors du collapse/expand
+    shouldScrollToBottom.current = false;
+    
+    setCollapsedThreads(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId)
+      } else {
+        newSet.add(messageId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Fonction pour répondre à un message
+  const handleReplyToMessage = useCallback((messageId: number) => {
+    // Désactiver le scroll automatique lors de la réponse
+    shouldScrollToBottom.current = false;
+    setReplyTo(messageId);
+  }, [])
+
+  // Composant récursif pour afficher les threads
+  function Thread({ messages, level = 0 }: { messages: ThreadedMessage[], level?: number }) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {messages.map((message) => {
-          const parent = findMessageById(allMessages, message.parent_comment_id ?? null)
+          const isCollapsed = collapsedThreads.has(message.id as number)
+          const hasReplies = message.replies && message.replies.length > 0
+          const replyCount = message.replies ? message.replies.length : 0
+          
           return (
-            <div key={message.id} className="ml-0">
-              {parent && (
-                <div className="ml-2 mb-1 border-l-2 border-muted pl-2 text-xs text-muted-foreground italic bg-muted/40 rounded">
-                  En réponse à : <span className="font-semibold">{parent.user.name}</span> : {parent.content.slice(0, 80)}{parent.content.length > 80 ? '…' : ''}
-                </div>
-              )}
+            <div key={message.id} data-message-id={message.id}>
               <ChatMessageItem
                 message={message}
                 isOwnMessage={message.user.name === username}
-                showHeader={true}
+                onReply={handleReplyToMessage}
+                level={level}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => toggleThreadCollapse(message.id as number)}
+                hasReplies={hasReplies}
+                replyCount={replyCount}
               />
-              <div className="flex gap-2 mt-1 mb-2">
-                <Button size="sm" variant="ghost" onClick={() => setReplyTo(message.id as number)}>
-                  Répondre
-                </Button>
-              </div>
-              {message.replies && message.replies.length > 0 && (
-                <div className="ml-6 border-l pl-4 border-border">
-                  <Thread messages={message.replies} />
-                </div>
+              {hasReplies && !isCollapsed && (
+                <Thread messages={message.replies} level={level + 1} />
               )}
             </div>
           )
@@ -152,47 +179,80 @@ export const RealtimeChat = ({
     )
   }
 
+  const replyToMessage = findMessageById(allMessages, replyTo)
+
   return (
-    <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
-      {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4 max-h-96">
-        {allMessages.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground">
-            No messages yet. Start the conversation!
-          </div>
-        ) : null}
-        <Thread messages={threadedMessages} />
+    <div className="flex flex-col h-full w-full bg-background border border-border rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-border p-4 bg-muted/30">
+        <h3 className="font-semibold text-foreground">Discussions</h3>
+        <p className="text-sm text-muted-foreground">
+          {isConnected ? 'Connecté' : 'Déconnecté'} • {allMessages.length} {allMessages.length === 1 ? 'message' : 'messages'}
+        </p>
       </div>
 
-      <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
-        {replyTo && (
-          <div className="flex items-center gap-2 text-xs mb-2">
-            <span>En réponse à un commentaire</span>
-            <Button size="sm" variant="outline" onClick={() => setReplyTo(null)} type="button">
-              Annuler
-            </Button>
+      {/* Messages */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto max-h-96">
+        {allMessages.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Aucun message pour le moment</p>
+              <p className="text-xs text-muted-foreground">Lancez la conversation !</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-2">
+            <Thread messages={threadedMessages} />
           </div>
         )}
-        <Input
-          className={cn(
-            'rounded-full bg-background text-sm transition-all duration-300',
-            isConnected && newMessage.trim() ? 'w-[calc(100%-36px)]' : 'w-full'
-          )}
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={userId ? "Type a message..." : "Connectez-vous pour commenter"}
-          disabled={!isConnected || !userId}
-        />
-        {isConnected && newMessage.trim() && userId && (
-          <Button
-            className="aspect-square rounded-full animate-in fade-in slide-in-from-right-4 duration-300"
-            type="submit"
+      </div>
+
+      {/* Reply indicator */}
+      {replyTo && replyToMessage && (
+        <div className="border-t border-border px-4 py-2 bg-muted/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Répondre à</span>
+              <span className="font-medium text-foreground">{replyToMessage.user.name}</span>
+              <span className="text-muted-foreground">:</span>
+              <span className="text-muted-foreground italic truncate max-w-xs">
+                {replyToMessage.content.slice(0, 50)}{replyToMessage.content.length > 50 ? '...' : ''}
+              </span>
+            </div>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => {
+                setReplyTo(null);
+                shouldScrollToBottom.current = true; // Réactiver le scroll quand on annule
+              }}
+              className="h-auto p-1 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Input form */}
+      <form onSubmit={handleSendMessage} className="border-t border-border p-4 bg-background">
+        <div className="flex gap-2">
+          <Input
+            className="flex-1 bg-muted/50 border-border focus:bg-background transition-colors"
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={userId ? "Écrire un message..." : "Connectez-vous pour commenter"}
             disabled={!isConnected || !userId}
+          />
+          <Button
+            type="submit"
+            disabled={!isConnected || !userId || !newMessage.trim()}
+            className="px-4"
           >
-            <Send className="size-4" />
+            <Send className="w-4 h-4" />
           </Button>
-        )}
+        </div>
       </form>
     </div>
   )

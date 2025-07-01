@@ -9,6 +9,11 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
   const user = await getAuthUser();
   const { id } = await params;
   // Récupère la ressource avec la catégorie et l'auteur
+  const { data: userDetails } = await supabase
+    .from("users")
+    .select("id, firstname, lastname")
+    .eq("id", user?.id || "")
+    .single();
   const { data: post } = await supabase
     .from("resources")
     .select("id, title, content, created_at, categories(name), users(firstname, lastname)")
@@ -53,8 +58,8 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         <h2 className="text-2xl font-bold mb-4 text-center">Commentaires</h2>
         <RealtimeChat
           roomName={`blog-post-${post.id}`}
-          username={ "Anonyme"}
-          userId={user?.id || ""}
+          username={userDetails?.firstname || "Anonyme"}
+          userId={userDetails?.id || ""}
           resourceId={post.id}
           messages={flatMessages}
         />
