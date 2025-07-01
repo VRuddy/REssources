@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/hooks/use-realtime-chat'
 import { Button } from '@/components/ui/button'
-import { MessageCircle, ChevronDown, ChevronRight } from 'lucide-react'
+import { MessageCircle, ChevronDown, ChevronRight, Reply } from 'lucide-react'
 
 interface ChatMessageItemProps {
   message: ChatMessage & { replies?: ChatMessage[] }
@@ -12,6 +12,7 @@ interface ChatMessageItemProps {
   onToggleCollapse?: () => void
   hasReplies?: boolean
   replyCount?: number
+  parentMessage?: ChatMessage
 }
 
 export const ChatMessageItem = ({ 
@@ -22,7 +23,8 @@ export const ChatMessageItem = ({
   isCollapsed = false,
   onToggleCollapse,
   hasReplies = false,
-  replyCount = 0
+  replyCount = 0,
+  parentMessage
 }: ChatMessageItemProps) => {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -38,13 +40,13 @@ export const ChatMessageItem = ({
   // Couleurs progressives pour les niveaux de threads
   const getThreadColor = (level: number) => {
     const colors = [
-      'border-blue-200',
-      'border-green-200', 
-      'border-purple-200',
-      'border-orange-200',
-      'border-pink-200'
+      'border-blue-200 dark:border-blue-700',
+      'border-green-200 dark:border-green-700', 
+      'border-purple-200 dark:border-purple-700',
+      'border-orange-200 dark:border-orange-700',
+      'border-pink-200 dark:border-pink-700'
     ]
-    return colors[level % colors.length] || 'border-gray-200'
+    return colors[level % colors.length] || 'border-gray-200 dark:border-gray-700'
   }
 
   return (
@@ -65,19 +67,6 @@ export const ChatMessageItem = ({
         "flex gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors relative",
         level > 0 && "bg-muted/10"
       )}>
-        {/* Badge de niveau pour les threads profonds */}
-        {level > 0 && (
-          <div className={cn(
-            "absolute -left-2 top-2 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white text-[10px]",
-            level === 1 && "bg-blue-400",
-            level === 2 && "bg-green-400", 
-            level === 3 && "bg-purple-400",
-            level >= 4 && "bg-orange-400"
-          )}>
-            {level}
-          </div>
-        )}
-
         {/* Avatar placeholder */}
         <div className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0",
@@ -95,22 +84,23 @@ export const ChatMessageItem = ({
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Header avec indicateur de niveau */}
+          {/* En réponse à... */}
+          {parentMessage && (
+            <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
+              <Reply className="w-3 h-3" />
+              <span>En réponse à</span>
+              <span className="font-medium text-foreground">{parentMessage.user.name}</span>
+                             <span className="italic text-muted-foreground/70 truncate max-w-[200px]">
+                 &ldquo;{parentMessage.content.slice(0, 40)}{parentMessage.content.length > 40 ? '...' : ''}&rdquo;
+               </span>
+            </div>
+          )}
+
+          {/* Header */}
           <div className="flex items-center gap-2 mb-1">
             <span className="font-semibold text-sm text-foreground">
               {message.user.name}
             </span>
-            {level > 0 && (
-              <span className={cn(
-                "text-xs px-1.5 py-0.5 rounded-full font-medium",
-                level === 1 && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-                level === 2 && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-                level === 3 && "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-                level >= 4 && "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
-              )}>
-                réponse {level > 1 ? `niv.${level}` : ''}
-              </span>
-            )}
             <span className="text-xs text-muted-foreground">
               {formatTime(message.createdAt)}
             </span>
@@ -119,7 +109,7 @@ export const ChatMessageItem = ({
             )}
           </div>
 
-          {/* Message content avec style différent selon le niveau */}
+          {/* Message content */}
           <div className={cn(
             "text-sm leading-relaxed mb-2",
             level === 0 ? "text-foreground" : "text-foreground/90",

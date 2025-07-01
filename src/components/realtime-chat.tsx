@@ -156,6 +156,7 @@ export const RealtimeChat = ({
           const isCollapsed = collapsedThreads.has(message.id as number)
           const hasReplies = message.replies && message.replies.length > 0
           const replyCount = message.replies ? message.replies.length : 0
+          const parentMessage = message.parent_comment_id ? findMessageById(allMessages, message.parent_comment_id) : undefined
           
           return (
             <div key={message.id} data-message-id={message.id}>
@@ -168,6 +169,7 @@ export const RealtimeChat = ({
                 onToggleCollapse={() => toggleThreadCollapse(message.id as number)}
                 hasReplies={hasReplies}
                 replyCount={replyCount}
+                parentMessage={parentMessage}
               />
               {hasReplies && !isCollapsed && (
                 <Thread messages={message.replies} level={level + 1} />
