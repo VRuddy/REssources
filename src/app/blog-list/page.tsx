@@ -7,10 +7,17 @@ export default function BlogListPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [readLaterIds, setReadLaterIds] = useState<string[]>([]);
+  const [viewedIds, setViewedIds] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      setUserId(user?.id || null);
       // Récupère les catégories
       const { data: catData } = await supabase.from("categories").select("name");
       setCategories(catData?.map((c) => c.name) || []);
@@ -30,9 +37,44 @@ export default function BlogListPage() {
         url: `/blog-post/${r.id}`,
       }));
       setPosts(mapped);
+      // Get read_later ids for current user
+      if (user?.id) {
+        const { data: readLater } = await supabase
+          .from("read_later")
+          .select("resource_id")
+          .eq("user_id", user.id);
+        setReadLaterIds(readLater?.map((r) => r.resource_id.toString()) || []);
+        // Get viewed ids for current user
+        const { data: views } = await supabase
+          .from("views")
+          .select("resource_id")
+          .eq("user_id", user.id);
+        setViewedIds(views?.map((v) => v.resource_id.toString()) || []);
+      }
     };
     fetchData();
   }, []);
+
+  // Add or remove a post from read_later
+  const toggleReadLater = async (postId: string) => {
+    if (!userId) return;
+    const supabase = createClient();
+    if (readLaterIds.includes(postId)) {
+      // Remove
+      await supabase
+        .from("read_later")
+        .delete()
+        .eq("user_id", userId)
+        .eq("resource_id", Number(postId));
+      setReadLaterIds((ids) => ids.filter((id) => id !== postId));
+    } else {
+      // Add
+      await supabase
+        .from("read_later")
+        .insert({ user_id: userId, resource_id: Number(postId) });
+      setReadLaterIds((ids) => [...ids, postId]);
+    }
+  };
 
   // Filtrage côté client
   const filteredPosts = selectedCategory
@@ -45,6 +87,9 @@ export default function BlogListPage() {
       categories={categories}
       onCategoryClick={setSelectedCategory}
       selectedCategory={selectedCategory}
+      readLaterIds={readLaterIds}
+      onToggleReadLater={toggleReadLater}
+      viewedIds={viewedIds}
     />
   );
 }

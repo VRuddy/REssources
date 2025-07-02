@@ -76,6 +76,78 @@ export type Database = {
           },
         ]
       }
+      likes: {
+        Row: {
+          created_at: string | null
+          id: number
+          resource_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          resource_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          resource_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      read_later: {
+        Row: {
+          id: number
+          resource_id: number
+          saved_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: number
+          resource_id: number
+          saved_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: number
+          resource_id?: number
+          saved_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "read_later_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "read_later_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           category_id: number | null
@@ -164,6 +236,42 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      views: {
+        Row: {
+          id: number
+          resource_id: number
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          id?: number
+          resource_id: number
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          id?: number
+          resource_id?: number
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "views_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

@@ -1,4 +1,8 @@
+"use client"
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { LucideHeart, LucideHeart as LucideHeartFilled } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface BlogPostProps {
   title: string;
@@ -15,6 +19,9 @@ interface BlogPostProps {
   breadcrumbs?: { label: string; href: string }[];
   chapters?: { label: string; href: string }[];
   socialLinks?: { icon: React.ReactNode; href: string }[];
+  liked: boolean;
+  userId: string | null;
+  resourceId: number;
 }
 
 export function BlogPost({
@@ -30,7 +37,37 @@ export function BlogPost({
   ],
   chapters = [],
   socialLinks = [],
+  liked,
+  userId,
+  resourceId,
 }: BlogPostProps) {
+  const [isLiked, setIsLiked] = useState(liked);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  useEffect(() => {
+    setIsLiked(liked);
+  }, [liked]);
+
+  const handleLike = async () => {
+    if (!userId || likeLoading) return;
+    setLikeLoading(true);
+    const supabase = createClient();
+    if (isLiked) {
+      await supabase
+        .from("likes")
+        .delete()
+        .eq("user_id", userId)
+        .eq("resource_id", resourceId);
+      setIsLiked(false);
+    } else {
+      await supabase
+        .from("likes")
+        .insert({ user_id: userId, resource_id: resourceId });
+      setIsLiked(true);
+    }
+    setLikeLoading(false);
+  };
+
   return (
     <section className="pb-32 flex flex-col items-center w-full">
       <div className="bg-muted bg-[url('/images/block/patterns/dot-pattern-2.svg')] bg-[length:3.125rem_3.125rem] bg-repeat py-20 w-full flex flex-col items-center">
@@ -94,15 +131,31 @@ export function BlogPost({
                     width={48}
                     height={48}
                    className="aspect-square size-full" alt={author.name} src={author.avatarUrl} />
-                  
                 ) : (
                   <span className="size-full flex items-center justify-center bg-muted text-muted-foreground">{author.name[0]}</span>
                 )}
               </span>
-              <div>
-                <div className="text-sm font-normal leading-normal">{author.name}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-normal leading-normal flex items-center gap-1">
+                  {author.name}
+                </div>
                 {author.role && (
                   <div className="text-muted-foreground text-sm font-normal leading-normal">{author.role}</div>
+                )}
+                {userId && (
+                  <button
+                    type="button"
+                    aria-label={isLiked ? "Retirer des favoris" : "Ajouter aux favoris"}
+                    className="ml-1 p-1 rounded-full hover:bg-primary/10 focus:outline-none"
+                    onClick={handleLike}
+                    disabled={likeLoading}
+                  >
+                    {isLiked ? (
+                      <LucideHeart className="text-red-500" fill="currentColor" size={18} />
+                    ) : (
+                      <LucideHeart className="text-muted-foreground" size={18} />
+                    )}
+                  </button>
                 )}
               </div>
             </div>

@@ -74,6 +74,7 @@ export default function Navbar1({
   },
 }: Navbar1Props) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -113,7 +114,12 @@ export default function Navbar1({
           </div>
           <div className="flex gap-2">
             {isAuthenticated ? (
-              <LogoutButton />
+              <>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/profile">Profil</Link>
+                </Button>
+                <LogoutButton />
+              </>
             ) : (
               <>
                 <Button asChild variant="outline" size="sm">
@@ -134,7 +140,7 @@ export default function Navbar1({
             <Link href={logo.url} className="flex items-center gap-2">
               <Image src={logo.src} width={32} height={32} alt={logo.alt} />
             </Link>
-            <Sheet>
+            <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="size-4" />
@@ -143,7 +149,11 @@ export default function Navbar1({
               <SheetContent className="overflow-y-auto">
                 <SheetHeader>
                   <SheetTitle>
-                    <Link href={logo.url} className="flex items-center gap-2">
+                    <Link
+                      href={logo.url}
+                      className="flex items-center gap-2"
+                      onClick={() => setOpen(false)}
+                    >
                       <Image src={logo.src} width={32} height={32} alt={logo.alt} />
                     </Link>
                   </SheetTitle>
@@ -154,19 +164,39 @@ export default function Navbar1({
                     collapsible
                     className="flex w-full flex-col gap-4"
                   >
-                    {menu.map((item) => renderMobileMenuItem(item))}
+                    {menu.map((item) => renderMobileMenuItem(item, setOpen))}
                   </Accordion>
 
                   <div className="flex flex-col gap-3">
                     {isAuthenticated ? (
-                      <LogoutButton />
+                      <>
+                        <Button asChild variant="outline">
+                          <Link
+                            href="/profile"
+                            onClick={() => setOpen(false)}
+                          >
+                            Profil
+                          </Link>
+                        </Button>
+                        <LogoutButton />
+                      </>
                     ) : (
                       <>
                         <Button asChild variant="outline">
-                          <Link href={auth.login.url}>{auth.login.title}</Link>
+                          <Link
+                            href={auth.login.url}
+                            onClick={() => setOpen(false)}
+                          >
+                            {auth.login.title}
+                          </Link>
                         </Button>
                         <Button asChild>
-                          <Link href={auth.signup.url}>{auth.signup.title}</Link>
+                          <Link
+                            href={auth.signup.url}
+                            onClick={() => setOpen(false)}
+                          >
+                            {auth.signup.title}
+                          </Link>
                         </Button>
                       </>
                     )}
@@ -211,7 +241,8 @@ const renderMenuItem = (item: MenuItem) => {
   );
 };
 
-const renderMobileMenuItem = (item: MenuItem) => {
+// Render mobile menu item with setOpen
+const renderMobileMenuItem = (item: MenuItem, setOpen: (open: boolean) => void) => {
   if (item.items) {
     return (
       <AccordionItem key={item.title} value={item.title} className="border-b-0">
@@ -220,25 +251,25 @@ const renderMobileMenuItem = (item: MenuItem) => {
         </AccordionTrigger>
         <AccordionContent className="mt-2">
           {item.items.map((subItem) => (
-            <SubMenuLink key={subItem.title} item={subItem} />
+            <SubMenuLink key={subItem.title} item={subItem} setOpen={setOpen} />
           ))}
         </AccordionContent>
       </AccordionItem>
     );
   }
-
   return (
-    <Link key={item.title} href={item.url} className="text-md font-semibold">
+    <Link key={item.title} href={item.url} className="text-md font-semibold" onClick={() => setOpen(false)}>
       {item.title}
     </Link>
   );
 };
 
-const SubMenuLink = ({ item }: { item: MenuItem }) => {
+const SubMenuLink = ({ item, setOpen }: { item: MenuItem, setOpen: (open: boolean) => void }) => {
   return (
     <Link
       className="flex flex-row gap-4 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none hover:bg-muted hover:text-accent-foreground"
       href={item.url}
+      onClick={() => setOpen(false)}
     >
       <div className="text-foreground">{item.icon}</div>
       <div>

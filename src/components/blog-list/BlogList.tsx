@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import React from "react";
 import { useRouter } from "next/navigation";
+import { LucideBookmark, LucideBookmarkCheck, LucideEye } from "lucide-react";
 
 export interface BlogPost {
   id: string;
@@ -22,6 +23,9 @@ interface BlogListProps {
   badge?: string;
   onCategoryClick?: (cat: string | null) => void;
   selectedCategory?: string | null;
+  readLaterIds?: string[];
+  onToggleReadLater?: (postId: string) => void;
+  viewedIds?: string[];
 }
 
 export function BlogList({
@@ -32,6 +36,9 @@ export function BlogList({
   badge = "Ressources",
   onCategoryClick,
   selectedCategory,
+  readLaterIds = [],
+  onToggleReadLater,
+  viewedIds = [],
 }: BlogListProps) {
   const router = useRouter();
 
@@ -64,22 +71,65 @@ export function BlogList({
               </Button>
             ))}
           </div>
+          {/* Mobile sticky horizontal categories */}
+          <div className="lg:hidden sticky top-0 z-20 bg-background py-2 w-full overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 px-2">
+              <Button
+                variant={!selectedCategory ? "secondary" : "ghost"}
+                className={!selectedCategory ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""}
+                onClick={() => onCategoryClick && onCategoryClick(null)}
+              >
+                Toutes les catégories
+              </Button>
+              {categories.map((cat) => (
+                <Button
+                  key={cat}
+                  variant={selectedCategory === cat ? "secondary" : "ghost"}
+                  className={selectedCategory === cat ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""}
+                  onClick={() => onCategoryClick && onCategoryClick(cat)}
+                >
+                  {cat}
+                </Button>
+              ))}
+            </div>
+          </div>
           {/* Blog posts */}
           <div className="lg:col-span-3 w-full flex flex-col gap-8 items-center">
             {posts.map((post, idx) => (
-              <div key={post.id} className="w-full max-w-2xl">
+              <div key={post.id} className="w-full max-w-2xl relative">
                 <button
                   type="button"
                   className="flex flex-col gap-3 text-left w-full bg-transparent border-0 p-0 hover:underline cursor-pointer"
                   onClick={() => router.push(post.url)}
                 >
-                  <p className="text-sm font-semibold text-muted-foreground">{post.category}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-muted-foreground">{post.category}</p>
+                  </div>
                   <h3 className="text-2xl font-semibold text-balance lg:text-3xl">{post.title}</h3>
                   <p className="text-muted-foreground">{post.summary}</p>
                   <div className="mt-3 flex items-center gap-2 text-sm">
                     <span className="font-medium">{post.author}</span>
                     <span className="text-muted-foreground">le {post.date}</span>
+                    {viewedIds.includes(post.id) && (
+                      <LucideEye className="text-primary ml-2" size={18} />
+                    )}
                   </div>
+                </button>
+                {/* Bookmark icon */}
+                <button
+                  type="button"
+                  aria-label="Ajouter à lire plus tard"
+                  className="absolute top-2 right-2 z-10 bg-white/80 rounded-full p-1 hover:bg-primary/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleReadLater && onToggleReadLater(post.id);
+                  }}
+                >
+                  {readLaterIds.includes(post.id) ? (
+                    <LucideBookmarkCheck className="text-primary" size={24} />
+                  ) : (
+                    <LucideBookmark className="text-muted-foreground" size={24} />
+                  )}
                 </button>
                 {idx < posts.length - 1 && (
                   <Separator className="my-8" />

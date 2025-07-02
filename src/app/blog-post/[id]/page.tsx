@@ -40,6 +40,24 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
 
   // Passe la liste plate à RealtimeChat (PAS d'appel à buildThread ici)
 
+  // Ajoute ou met à jour la date de vue pour garder l'historique du dernier passage
+  if (user?.id && post?.id) {
+    await supabase.from("views").upsert({
+      user_id: user.id,
+      resource_id: post.id,
+      viewed_at: new Date().toISOString(),
+    }, { onConflict: "user_id,resource_id" });
+  }
+
+  // Vérifie si le post est aimé par l'utilisateur
+  const { data: likeData } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("user_id", user?.id || "")
+    .eq("resource_id", post.id)
+    .maybeSingle();
+  const liked = likeData?.id ? true : false;
+
   return (
     <>
       <BlogPost
@@ -53,6 +71,9 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         }}
         date={post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
         categories={post.categories?.name ? [post.categories.name] : []}
+        liked={liked}
+        userId={user?.id || null}
+        resourceId={post.id}
       />
       <div className="max-w-2xl mx-auto w-full mt-12">
         <h2 className="text-2xl font-bold mb-4 text-center">Commentaires</h2>
