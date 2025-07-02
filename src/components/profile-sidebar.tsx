@@ -21,15 +21,30 @@ function formatDate(dateString: string) {
 	});
 }
 
+interface User {
+	id: string;
+	email?: string;
+}
+
+interface Post {
+	id: string;
+	category: string;
+	title: string;
+	summary: string;
+	author: string;
+	date: string;
+	url: string;
+}
+
 export default function ProfileSidebar() {
 	const [filter, setFilter] = useState("history");
-	const [posts, setPosts] = useState<any[]>([]);
+	const [posts, setPosts] = useState<Post[]>([]);
 	const [loading, setLoading] = useState(false);
-	const [user, setUser] = useState<any>(null);
+	const [user, setUser] = useState<User | null>(null);
 
 	useEffect(() => {
 		const supabase = createClient();
-		supabase.auth.getUser().then(({ data, error }) => {
+		supabase.auth.getUser().then(({ data }) => {
 			if (data?.user) setUser(data.user);
 			else setUser(null);
 		});
@@ -37,45 +52,57 @@ export default function ProfileSidebar() {
 
 	useEffect(() => {
 		if (!user) return;
-		setLoading(true);
-		const supabase = createClient();
-		let query;
-		if (filter === "history") {
-			query = supabase
-				.from("views")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("viewed_at", { ascending: false });
-		} else if (filter === "readlater") {
-			query = supabase
-				.from("read_later")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("saved_at", { ascending: false });
-		} else if (filter === "liked") {
-			query = supabase
-				.from("likes")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("created_at", { ascending: false });
-		}
-		query
-			?.then(({ data, error }) => {
-				const posts = (data || [])
-					.map((v: any) => v.resources)
-					.filter(Boolean)
-					.map((r: any) => ({
-						id: r.id?.toString(),
-						category: r.category_id?.toString() ?? "",
-						title: r.title,
-						summary: r.content ?? "",
-						author: r.owner_id ?? "",
-						date: r.created_at ?? "",
-						url: `/blog-post/${r.id}`,
-					}));
-				setPosts(posts);
-			})
-			.finally(() => setLoading(false));
+		
+		const fetchPosts = async () => {
+			setLoading(true);
+			try {
+				const supabase = createClient();
+				let query;
+				
+				if (filter === "history") {
+					query = supabase
+						.from("views")
+						.select("resource_id, resources:resources(*)")
+						.eq("user_id", user.id)
+						.order("viewed_at", { ascending: false });
+				} else if (filter === "readlater") {
+					query = supabase
+						.from("read_later")
+						.select("resource_id, resources:resources(*)")
+						.eq("user_id", user.id)
+						.order("saved_at", { ascending: false });
+				} else if (filter === "liked") {
+					query = supabase
+						.from("likes")
+						.select("resource_id, resources:resources(*)")
+						.eq("user_id", user.id)
+						.order("created_at", { ascending: false });
+				}
+				
+				if (query) {
+					const { data } = await query;
+					const posts = (data || [])
+						.map((v: { resources: { id: number; category_id: number | null; title: string; content: string | null; owner_id: string | null; created_at: string | null } }) => v.resources)
+						.filter(Boolean)
+						.map((r: { id: number; category_id: number | null; title: string; content: string | null; owner_id: string | null; created_at: string | null }) => ({
+							id: r.id?.toString(),
+							category: r.category_id?.toString() ?? "",
+							title: r.title,
+							summary: r.content ?? "",
+							author: r.owner_id ?? "",
+							date: r.created_at ?? "",
+							url: `/blog-post/${r.id}`,
+						}));
+					setPosts(posts);
+				}
+			} catch (error) {
+				console.error("Erreur lors du chargement des posts:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
+		
+		fetchPosts();
 	}, [filter, user]);
 
 	if (!user) return null;

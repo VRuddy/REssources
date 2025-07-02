@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter } from "react-icons/fa";
 
 interface Footer7Props {
@@ -88,10 +89,12 @@ const Footer7 = ({
             {/* Logo */}
             <div className="flex items-center gap-2 lg:justify-start">
               <a href={logo.url}>
-                <img
+                <Image
                   src={logo.src}
                   alt={logo.alt}
                   title={logo.title}
+                  width={32}
+                  height={32}
                   className="h-8"
                 />
               </a>

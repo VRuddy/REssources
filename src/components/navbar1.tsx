@@ -264,12 +264,12 @@ const renderMobileMenuItem = (item: MenuItem, setOpen: (open: boolean) => void) 
   );
 };
 
-const SubMenuLink = ({ item, setOpen }: { item: MenuItem, setOpen: (open: boolean) => void }) => {
+const SubMenuLink = ({ item, setOpen }: { item: MenuItem, setOpen?: (open: boolean) => void }) => {
   return (
     <Link
       className="flex flex-row gap-4 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none hover:bg-muted hover:text-accent-foreground"
       href={item.url}
-      onClick={() => setOpen(false)}
+      onClick={() => setOpen?.(false)}
     >
       <div className="text-foreground">{item.icon}</div>
       <div>
