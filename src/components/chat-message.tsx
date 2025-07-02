@@ -120,15 +120,18 @@ export const ChatMessageItem = ({
 
           {/* Action buttons */}
           <div className="flex items-center gap-4 text-muted-foreground">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-1 hover:text-primary transition-colors"
-              onClick={() => onReply?.(message.id as number)}
-            >
-              <MessageCircle className="w-4 h-4 mr-1" />
-              <span className="text-xs">Répondre</span>
-            </Button>
+            {/* Désactiver répondre si on est déjà dans une réponse (level > 0) */}
+            {level === 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 hover:text-primary transition-colors"
+                onClick={() => onReply?.(message.id as number)}
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                <span className="text-xs">Répondre</span>
+              </Button>
+            )}
 
             {hasReplies && (
               <Button

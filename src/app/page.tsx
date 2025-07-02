@@ -39,7 +39,7 @@ export default function Page() {
   }, []);
 
   return (
-    <main className="flex flex-col items-center w-full mx-auto">
+    <main className="flex flex-col items-center w-full max-w-7xl mx-auto">
       <Hero45
         badge="Ressources citoyennes"
         heading="Trouvez et partagez des ressources pour mieux vivre ensemble"

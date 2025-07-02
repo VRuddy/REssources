@@ -65,8 +65,12 @@ export const RealtimeChat = ({
     const uniqueMessages = mergedMessages.filter(
       (message, index, self) => index === self.findIndex((m) => m.id === message.id)
     )
-    // Sort by creation date
-    const sortedMessages = uniqueMessages.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    // Sort by creation date (chronological order)
+    const sortedMessages = uniqueMessages.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateA - dateB
+    })
 
     return sortedMessages
   }, [initialMessages, realtimeMessages])
@@ -94,13 +98,14 @@ export const RealtimeChat = ({
       shouldScrollToBottom.current = true;
 
       sendMessage(newMessage, replyTo);
-      // Enregistre le message dans Supabase
+      // Enregistre le message dans Supabase avec horodatage
       const supabase = createClient();
       await supabase.from('comments').insert({
         author_id: userId,
         resource_id: resourceId,
         content: newMessage,
         parent_comment_id: replyTo ?? null,
+        created_at: new Date().toISOString(), // Ajouter horodatage explicite
       });
       setNewMessage('');
       setReplyTo(null);
@@ -108,13 +113,14 @@ export const RealtimeChat = ({
     [newMessage, isConnected, sendMessage, userId, resourceId, replyTo]
   )
 
-  // Fonction pour organiser les messages en threads
+  // Fonction pour organiser les messages en threads (limitée à 1 niveau)
   const buildThread = useCallback((messages: ChatMessage[], parent_comment_id: number | null = null): ThreadedMessage[] => {
     return messages
       .filter((msg) => (msg.parent_comment_id ?? null) === parent_comment_id)
       .map((msg) => ({
         ...msg,
-        replies: buildThread(messages, msg.id),
+        // Limiter à 1 niveau de profondeur : les réponses n'ont pas de sous-réponses
+        replies: parent_comment_id === null ? buildThread(messages, msg.id) : [],
       }))
   }, []);
 
@@ -148,7 +154,7 @@ export const RealtimeChat = ({
     setReplyTo(messageId);
   }, [])
 
-  // Composant récursif pour afficher les threads
+  // Composant récursif pour afficher les threads (limité à 1 niveau)
   function Thread({ messages, level = 0 }: { messages: ThreadedMessage[], level?: number }) {
     return (
       <div className="space-y-1">
@@ -171,8 +177,9 @@ export const RealtimeChat = ({
                 replyCount={replyCount}
                 parentMessage={parentMessage}
               />
-              {hasReplies && !isCollapsed && (
-                <Thread messages={message.replies} level={level + 1} />
+              {/* Afficher les réponses seulement si on est au niveau 0 et qu'elles existent */}
+              {hasReplies && !isCollapsed && level === 0 && (
+                <Thread messages={message.replies} level={1} />
               )}
             </div>
           )
