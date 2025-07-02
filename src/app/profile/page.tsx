@@ -2,41 +2,35 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { LucideEye, LucideBookmark, LucideHeart } from "lucide-react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import ProfileSidebar from "@/components/profile-sidebar";
 
-const FILTERS = [
-	{ key: "history", label: "Historique", icon: LucideEye },
-	{ key: "readlater", label: "À regarder plus tard", icon: LucideBookmark },
-	{ key: "liked", label: "Likés", icon: LucideHeart },
-];
+interface ProfilePost {
+	id: string;
+	category: string;
+	title: string;
+	summary: string;
+	author: string;
+	date: string;
+	url: string;
+}
 
-function formatDate(dateString: string) {
-	if (!dateString) return "";
-	const date = new Date(dateString);
-	return date.toLocaleDateString("fr-FR", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
+interface SupabaseUser {
+	id: string;
+	email?: string;
+	[key: string]: unknown;
 }
 
 export default function ProfilePage() {
-	const [filter, setFilter] = useState("history");
-	const [posts, setPosts] = useState<any[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [user, setUser] = useState<any>(null);
-	const router = useRouter();
+	const [filter, setFilter] = useState<string>("history");
+	const [posts, setPosts] = useState<ProfilePost[]>([]);
+	const [loading, setLoading] = useState<boolean>(false);
+	const [user, setUser] = useState<SupabaseUser | null>(null);
 
 	useEffect(() => {
 		const fetchUser = async () => {
 			const supabase = createClient();
 			const { data } = await supabase.auth.getUser();
-			if (data?.user) setUser(data.user);
+			if (data?.user) setUser(data.user as unknown as SupabaseUser);
 			else setUser(null);
 		};
 		fetchUser();
@@ -69,10 +63,19 @@ export default function ProfilePage() {
 			}
 			if (query) {
 				const { data } = await query;
-				const posts = (data || [])
-					.map((v: any) => v.resources)
+				type SupabaseResource = {
+					id: string | number;
+					category_id?: string | number;
+					title: string;
+					content?: string;
+					owner_id?: string;
+					created_at?: string;
+				};
+				type SupabaseRow = { resources: SupabaseResource };
+				const posts = (data as SupabaseRow[] | null || [])
+					.map((v) => v.resources)
 					.filter(Boolean)
-					.map((r: any) => ({
+					.map((r) => ({
 						id: r.id?.toString(),
 						category: r.category_id?.toString() ?? "",
 						title: r.title,
@@ -80,7 +83,7 @@ export default function ProfilePage() {
 						author: r.owner_id ?? "",
 						date: r.created_at ?? "",
 						url: `/blog-post/${r.id}`,
-					}));
+					})) as ProfilePost[];
 				setPosts(posts);
 			}
 			setLoading(false);
@@ -92,12 +95,20 @@ export default function ProfilePage() {
 		<div className="flex min-h-screen max-w-5xl mx-auto pt-8 gap-8">
 			{/* Sidebar sous la navbar, centrée à gauche */}
 			<div className="w-full max-w-xs flex-shrink-0">
-				<ProfileSidebar />
+				<ProfileSidebar
+					filter={filter}
+					setFilter={setFilter}
+					posts={posts}
+					loading={loading}
+					user={user}
+				/>
 			</div>
 			{/* Contenu principal à droite */}
 			<main className="flex-1 bg-white rounded-xl shadow p-8">
 				{/* Ici mettre le formulaire de modification du profil utilisateur */}
-				<div className="text-gray-400 text-center">Modification du profil utilisateur à venir…</div>
+				<div className="text-gray-400 text-center">
+					Modification du profil utilisateur à venir…
+				</div>
 			</main>
 		</div>
 	);

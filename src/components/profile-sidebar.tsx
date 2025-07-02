@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { LucideEye, LucideBookmark, LucideHeart } from "lucide-react";
 import Link from "next/link";
 
@@ -21,63 +19,15 @@ function formatDate(dateString: string) {
 	});
 }
 
-export default function ProfileSidebar() {
-	const [filter, setFilter] = useState("history");
-	const [posts, setPosts] = useState<any[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [user, setUser] = useState<any>(null);
+interface ProfileSidebarProps {
+	filter: string;
+	setFilter: (filter: string) => void;
+	posts: { id: string; url: string; category: string; date: string; title: string; summary: string; author: string }[];
+	loading: boolean;
+	user: unknown;
+}
 
-	useEffect(() => {
-		const supabase = createClient();
-		supabase.auth.getUser().then(({ data, error }) => {
-			if (data?.user) setUser(data.user);
-			else setUser(null);
-		});
-	}, []);
-
-	useEffect(() => {
-		if (!user) return;
-		setLoading(true);
-		const supabase = createClient();
-		let query;
-		if (filter === "history") {
-			query = supabase
-				.from("views")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("viewed_at", { ascending: false });
-		} else if (filter === "readlater") {
-			query = supabase
-				.from("read_later")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("saved_at", { ascending: false });
-		} else if (filter === "liked") {
-			query = supabase
-				.from("likes")
-				.select("resource_id, resources:resources(*)")
-				.eq("user_id", user.id)
-				.order("created_at", { ascending: false });
-		}
-		query
-			?.then(({ data, error }) => {
-				const posts = (data || [])
-					.map((v: any) => v.resources)
-					.filter(Boolean)
-					.map((r: any) => ({
-						id: r.id?.toString(),
-						category: r.category_id?.toString() ?? "",
-						title: r.title,
-						summary: r.content ?? "",
-						author: r.owner_id ?? "",
-						date: r.created_at ?? "",
-						url: `/blog-post/${r.id}`,
-					}));
-				setPosts(posts);
-			})
-			.finally(() => setLoading(false));
-	}, [filter, user]);
-
+export default function ProfileSidebar({ filter, setFilter, posts, loading, user }: ProfileSidebarProps) {
 	if (!user) return null;
 
 	return (

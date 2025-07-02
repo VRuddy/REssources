@@ -213,13 +213,17 @@ export default function Navbar1({
 
 const renderMenuItem = (item: MenuItem) => {
   if (item.items) {
+    function setOpen(open: boolean): void {
+      // This function updates the state to control the visibility of the mobile menu
+      setOpen(open);
+    }
     return (
       <NavigationMenuItem key={item.title}>
         <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
         <NavigationMenuContent className="bg-popover text-popover-foreground">
           {item.items.map((subItem) => (
             <NavigationMenuLink asChild key={subItem.title} className="w-80">
-              <SubMenuLink item={subItem} />
+              <SubMenuLink item={subItem} setOpen={setOpen} />
             </NavigationMenuLink>
           ))}
         </NavigationMenuContent>

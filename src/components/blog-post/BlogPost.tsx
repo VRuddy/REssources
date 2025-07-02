@@ -1,7 +1,7 @@
 "use client"
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { LucideHeart, LucideHeart as LucideHeartFilled } from "lucide-react";
+import { LucideHeart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface BlogPostProps {

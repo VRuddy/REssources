@@ -122,7 +122,9 @@ export function BlogList({
                   className="absolute top-2 right-2 z-10 bg-white/80 rounded-full p-1 hover:bg-primary/10"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleReadLater && onToggleReadLater(post.id);
+                    if (onToggleReadLater) {
+                      onToggleReadLater(post.id);
+                    }
                   }}
                 >
                   {readLaterIds.includes(post.id) ? (
