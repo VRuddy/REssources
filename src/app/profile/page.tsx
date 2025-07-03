@@ -181,19 +181,19 @@ export default function ProfilePage() {
 			if (filter === "history") {
 				query = supabase
 					.from("views")
-					.select("resource_id, viewed_at, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("viewed_at", { ascending: false });
 			} else if (filter === "saved") {
 				query = supabase
 					.from("read_later")
-					.select("resource_id, saved_at, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("saved_at", { ascending: false });
 			} else if (filter === "liked") {
 				query = supabase
 					.from("likes")
-					.select("resource_id, created_at, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false });
 			}
@@ -206,6 +206,7 @@ export default function ProfilePage() {
 					content?: string;
 					owner_id?: string;
 					created_at?: string;
+					users?: { firstname?: string; lastname?: string };
 				};
 				type SupabaseRow = { 
 					resources: SupabaseResource;
