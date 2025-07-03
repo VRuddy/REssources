@@ -3,57 +3,132 @@ import { createClient } from "@/lib/supabase/server";
 import { BlogPost } from "@/components/blog-post/BlogPost";
 import { RealtimeChat } from "@/components/realtime-chat";
 import { getAuthUser } from "@/app/helper/get-user";
-import { getUsersAvatars, getCurrentUserAvatar } from "@/app/actions";
 
 export default async function BlogPostPage({params}: {params: Promise<{ id: string }>}) {
   const supabase = await createClient();
+  const { id } = await params;
+  
   // Récupère l'utilisateur connecté (auth)
   const user = await getAuthUser();
-  // Récupère les infos détaillées de l'utilisateur depuis la table users
-  let userDetails = null;
-  if (user?.id) {
-    const { data } = await supabase
+  
+  // Requêtes parallèles pour optimiser les performances
+  const [
+    userDetailsResult,
+    postResult,
+    userRoleResult,
+    commentsResult,
+    likeResult
+  ] = await Promise.all([
+    // Détails utilisateur
+    user?.id ? supabase
       .from("users")
       .select("id, firstname, lastname")
       .eq("id", user.id)
-      .single();
-    userDetails = data;
-  }
-  const { id } = await params;
-  // Récupère la ressource avec la catégorie, l'auteur et is_verified
-  const { data: post } = await supabase
-    .from("resources")
-    .select("id, title, content, created_at, is_verified, is_public, owner_id, categories(name), users(firstname, lastname)")
-    .eq("id", Number(id))
-    .single();
+      .single() : Promise.resolve({ data: null }),
+    
+    // Post avec toutes les relations en une seule requête
+    supabase
+      .from("resources")
+      .select(`
+        id, 
+        title, 
+        content, 
+        created_at, 
+        is_verified, 
+        is_public, 
+        owner_id, 
+        categories(name), 
+        users(firstname, lastname)
+      `)
+      .eq("id", Number(id))
+      .single(),
+    
+    // Rôle utilisateur
+    user?.id ? supabase
+      .from("users")
+      .select("role_id")
+      .eq("id", user.id)
+      .single() : Promise.resolve({ data: null }),
+    
+    // Commentaires avec utilisateurs
+    supabase
+      .from("comments")
+      .select("id, content, created_at, author_id, parent_comment_id, users(firstname, lastname)")
+      .eq("resource_id", Number(id))
+      .order("created_at", { ascending: true }),
+    
+    // Vérification des likes
+    user?.id ? supabase
+      .from("likes")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("resource_id", Number(id))
+      .maybeSingle() : Promise.resolve({ data: null }),
+    
+    // Ajout de la vue (en arrière-plan, pas besoin du résultat)
+    user?.id ? supabase
+      .from("views")
+      .upsert({
+        user_id: user.id,
+        resource_id: Number(id),
+        viewed_at: new Date().toISOString(),
+      }, { onConflict: "user_id,resource_id" }) : Promise.resolve({ data: null })
+  ]);
 
+  const post = postResult.data;
   if (!post) return notFound();
 
-  // Récupère le rôle de l'utilisateur
-  const { data: userRole } = user?.id
-    ? await supabase.from("users").select("role_id").eq("id", user.id).single()
-    : { data: null };
-  const isModerator = userRole?.role_id === 3;
+  const userDetails = userDetailsResult.data;
+  const isModerator = userRoleResult.data?.role_id === 3;
+  const comments = commentsResult.data || [];
+  const liked = likeResult.data?.id ? true : false;
 
-  // Récupère les commentaires pour ce post
-  const { data: comments } = await supabase
-    .from("comments")
-    .select("id, content, created_at, author_id, parent_comment_id, users(firstname, lastname)")
-    .eq("resource_id", Number(id))
-    .order("created_at", { ascending: true });
+  // Optimisation : récupération des avatars en une seule fois
+  const allUserIds = new Set<string>();
+  if (user?.id) allUserIds.add(user.id);
+  if (post.owner_id) allUserIds.add(post.owner_id);
+  comments.forEach(c => {
+    if (c.author_id) allUserIds.add(c.author_id);
+  });
 
-  // Récupère les avatars des utilisateurs qui ont commenté
-  const authorIds = [...new Set((comments || []).map(c => c.author_id).filter((id): id is string => id !== null))];
-  const avatarMap = await getUsersAvatars(authorIds);
-  
-  // Récupère l'avatar de l'utilisateur connecté
-  const currentUserAvatar = user?.id ? await getCurrentUserAvatar(user.id) : undefined;
-  
-  // Récupère l'avatar de l'auteur de la ressource
-  const authorAvatar = post.owner_id ? await getCurrentUserAvatar(post.owner_id) : undefined;
+  // Récupération des avatars en une seule requête
+  const avatarMap = new Map<string, string>();
+  if (allUserIds.size > 0) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const supabaseAdmin = createAdminClient();
+      
+      // Récupération en parallèle pour tous les utilisateurs
+      const avatarPromises = Array.from(allUserIds).map(async (userId) => {
+        try {
+          const { data: files } = await supabaseAdmin.storage
+            .from('avatars')
+            .list(userId);
+          
+          if (files && files.length > 0) {
+            const fileName = files[0].name;
+            const { data: { publicUrl } } = supabaseAdmin.storage
+              .from('avatars')
+              .getPublicUrl(`${userId}/${fileName}`);
+            return { userId, avatarUrl: publicUrl };
+          }
+        } catch (error) {
+          console.error(`Erreur avatar pour ${userId}:`, error);
+        }
+        return { userId, avatarUrl: undefined };
+      });
 
-  // On mappe les commentaires pour inclure parent_comment_id et user
-  const flatMessages = (comments || []).map((c) => ({
+      const avatarResults = await Promise.all(avatarPromises);
+      avatarResults.forEach(({ userId, avatarUrl }) => {
+        if (avatarUrl) avatarMap.set(userId, avatarUrl);
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des avatars:', error);
+    }
+  }
+
+  // Mapping des commentaires avec avatars
+  const flatMessages = comments.map((c) => ({
     id: Number(c.id),
     content: c.content,
     createdAt: c.created_at || '',
@@ -61,30 +136,9 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
     user: { 
       name: c.users?.firstname || "Anonyme", 
       id: c.author_id,
-      avatarUrl: c.author_id ? avatarMap.get(c.author_id) || undefined : undefined
+      avatarUrl: c.author_id ? avatarMap.get(c.author_id) : undefined
     },
   }));
-
-  // Passe la liste plate à RealtimeChat (PAS d'appel à buildThread ici)
-
-  // Ajoute ou met à jour la date de vue pour garder l'historique du dernier passage
-  if (user?.id && post?.id) {
-    await supabase.from("views").upsert({
-      user_id: user.id,
-      resource_id: post.id,
-      viewed_at: new Date().toISOString(),
-    }, { onConflict: "user_id,resource_id" });
-  }
-
-  // Vérifie si le post est aimé par l'utilisateur
-  const { data: likeData } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("user_id", user?.id || "")
-    .eq("resource_id", post.id)
-    .maybeSingle();
-  const liked = likeData?.id ? true : false;
-
 
   return (
     <>
@@ -94,7 +148,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         content={post.content}
         author={{
           name: post.users?.firstname || "Anonyme",
-          avatarUrl: authorAvatar,
+          avatarUrl: post.owner_id ? avatarMap.get(post.owner_id) : undefined,
           role: "Auteur",
         }}
         date={post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
@@ -105,6 +159,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         isVerified={post.is_verified}
         isModerator={isModerator}
         isPublic={post.is_public}
+        ownerId={post.owner_id}
       />
       <div className="max-w-2xl mx-auto w-full mt-12">
         <h2 className="text-2xl font-bold mb-4 text-center">Commentaires</h2>
@@ -113,7 +168,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
           username={userDetails?.firstname || "Anonyme"}
           userId={userDetails?.id || ""}
           resourceId={post.id}
-          avatarUrl={currentUserAvatar}
+          avatarUrl={user?.id ? avatarMap.get(user.id) : undefined}
           messages={flatMessages}
           isModerator={isModerator}
         />

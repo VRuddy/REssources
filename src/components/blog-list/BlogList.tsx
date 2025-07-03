@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { LucideBookmark, LucideBookmarkCheck, LucideEye, LucideCheckCircle, LucideXCircle } from "lucide-react";
+import { LucideBookmark, LucideBookmarkCheck, LucideEye, LucideCheckCircle, LucideXCircle, LucidePlus } from "lucide-react";
 
 export interface BlogPost {
   id: string;
@@ -31,6 +31,8 @@ interface BlogListProps {
   onToggleReadLater?: (postId: string) => void;
   viewedIds?: string[];
   isModerator?: boolean;
+  onAddResource?: () => void;
+  showAddButton?: boolean;
 }
 
 export function BlogList({
@@ -45,6 +47,8 @@ export function BlogList({
   onToggleReadLater,
   viewedIds = [],
   isModerator = false,
+  onAddResource,
+  showAddButton = false,
 }: BlogListProps) {
   const router = useRouter();
 
@@ -59,6 +63,16 @@ export function BlogList({
         <div className="mx-20to mt-20 grid max-w-7xl w-full grid-cols-1 gap-20 lg:grid-cols-4">
           {/* Sidebar categories */}
           <div className="hidden flex-col gap-2 lg:flex">
+            {showAddButton && onAddResource && (
+              <Button
+                onClick={onAddResource}
+                className="justify-start text-left mb-4"
+                variant="default"
+              >
+                <LucidePlus className="w-4 h-4 mr-2" />
+                Ajouter une ressource
+              </Button>
+            )}
             <Button
               variant={!selectedCategory ? "secondary" : "ghost"}
               className={!selectedCategory ? "justify-start text-left bg-secondary text-secondary-foreground hover:bg-secondary/80" : "justify-start text-left"}
@@ -80,6 +94,17 @@ export function BlogList({
           {/* Mobile sticky horizontal categories */}
           <div className="lg:hidden sticky top-0 z-20 bg-background py-2 w-full overflow-x-auto scrollbar-hide">
             <div className="flex gap-2 px-2">
+              {showAddButton && onAddResource && (
+                <Button
+                  onClick={onAddResource}
+                  className="flex-shrink-0"
+                  variant="default"
+                  size="sm"
+                >
+                  <LucidePlus className="w-4 h-4 mr-1" />
+                  Ajouter
+                </Button>
+              )}
               <Button
                 variant={!selectedCategory ? "secondary" : "ghost"}
                 className={!selectedCategory ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""}

@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { BlogList, BlogPost } from "@/components/blog-list/BlogList";
 import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
+import { useSearchParams } from "next/navigation";
 
 // Fonction pour récupérer les avatars des auteurs côté client
 const getAuthorsAvatars = async (ownerIds: string[]) => {
@@ -34,7 +34,9 @@ const getAuthorsAvatars = async (ownerIds: string[]) => {
   return avatarMap;
 };
 
-export default function BlogListPage() {
+// Composant principal qui utilise useSearchParams
+function BlogListPageContent() {
+  const searchParams = useSearchParams();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [categoriesList, setCategoriesList] = useState<{id: number, name: string}[]>([]);
@@ -45,6 +47,13 @@ export default function BlogListPage() {
   const [userRoleId, setUserRoleId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editingResource, setEditingResource] = useState<{
+    id: number;
+    title: string;
+    content: string;
+    isPublic: boolean;
+    categoryId: number | null;
+  } | null>(null);
 
   // Déplace fetchData hors du useEffect pour pouvoir l'utiliser ailleurs
   const fetchData = async () => {
@@ -114,6 +123,35 @@ export default function BlogListPage() {
     fetchData();
   }, []);
 
+  // Vérifier si on est en mode édition
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && userId) {
+      const fetchResourceToEdit = async () => {
+        const supabase = createClient();
+        const { data: resource } = await supabase
+          .from("resources")
+          .select("id, title, content, is_public, category_id, owner_id")
+          .eq("id", Number(editId))
+          .eq("owner_id", userId) // Vérifier que l'utilisateur est bien le propriétaire
+          .single();
+        
+        if (resource) {
+          setEditingResource({
+            id: resource.id,
+            title: resource.title,
+            content: resource.content || "",
+            isPublic: resource.is_public,
+            categoryId: resource.category_id,
+          });
+          setOpen(true);
+        }
+      };
+      
+      fetchResourceToEdit();
+    }
+  }, [searchParams, userId]);
+
   // Add or remove a post from read_later
   const toggleReadLater = async (postId: string) => {
     if (!userId) return;
@@ -140,32 +178,55 @@ export default function BlogListPage() {
     ? posts.filter((p) => p.category === selectedCategory)
     : posts;
 
-  // Ajout d'une ressource
+  // Ajout ou modification d'une ressource
   const handleAddResource = async (values: { title: string; content: string; isPublic: boolean; categoryId: number | null; }) => {
     if (!userId) return;
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.from("resources").insert({
-      title: values.title,
-      content: values.content,
-      is_public: values.isPublic,
-      owner_id: userId,
-      is_verified: false,
-      category_id: values.categoryId,
-    });
-    setLoading(false);
-    if (!error) {
-      setOpen(false);
-      // Rafraîchir la page ou rappeler fetchData
-      fetchData();
+    
+    if (editingResource) {
+      // Mode édition - mise à jour
+      const { error } = await supabase
+        .from("resources")
+        .update({
+          title: values.title,
+          content: values.content,
+          is_public: values.isPublic,
+          category_id: values.categoryId,
+          is_verified: false, // Remettre à false comme demandé
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingResource.id)
+        .eq("owner_id", userId); // Sécurité supplémentaire
+      
+      if (!error) {
+        setOpen(false);
+        setEditingResource(null);
+        await fetchData(); // Recharger les données
+      }
+    } else {
+      // Mode ajout - création
+      const { error } = await supabase
+        .from("resources")
+        .insert({
+          title: values.title,
+          content: values.content,
+          is_public: values.isPublic,
+          category_id: values.categoryId,
+          owner_id: userId,
+          is_verified: false,
+        });
+      
+      if (!error) {
+        setOpen(false);
+        await fetchData(); // Recharger les données
+      }
     }
+    setLoading(false);
   };
 
   return (
     <>
-        <Button onClick={() => setOpen(true)}>
-          + Ajouter une ressource
-        </Button>
       <BlogList
         posts={filteredPosts}
         categories={categories}
@@ -175,20 +236,46 @@ export default function BlogListPage() {
         onToggleReadLater={toggleReadLater}
         viewedIds={viewedIds}
         isModerator={userRoleId === 3}
+        onAddResource={() => setOpen(true)}
+        showAddButton={true}
       />
+      
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-full max-w-[95vw] sm:max-w-4xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Ajouter une ressource</DialogTitle>
+            <DialogTitle>
+              {editingResource ? "Modifier la ressource" : "Ajouter une ressource"}
+            </DialogTitle>
           </DialogHeader>
           <AddOrEditResourceForm
-            categories={categoriesList}
-            loading={loading}
             onSubmit={handleAddResource}
-            onCancel={() => setOpen(false)}
+            loading={loading}
+            categories={categoriesList}
+            initialValues={editingResource || undefined}
           />
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// Composant de chargement pour le Suspense
+function BlogListPageLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Chargement...</p>
+      </div>
+    </div>
+  );
+}
+
+// Composant principal avec Suspense
+export default function BlogListPage() {
+  return (
+    <Suspense fallback={<BlogListPageLoading />}>
+      <BlogListPageContent />
+    </Suspense>
   );
 }

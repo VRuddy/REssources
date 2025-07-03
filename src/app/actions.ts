@@ -351,29 +351,59 @@ export async function deleteAccount() {
 	}
 }
 
+// Cache pour les avatars (en mémoire, se vide au redémarrage)
+const avatarCache = new Map<string, string>();
+
 export async function getUsersAvatars(userIds: string[]) {
 	const { createAdminClient } = await import('@/lib/supabase/server');
 	const supabaseAdmin = createAdminClient();
 	
 	const avatarMap = new Map<string, string>();
+	const uncachedUserIds: string[] = [];
 	
+	// Vérifier le cache d'abord
 	for (const userId of userIds) {
+		if (avatarCache.has(userId)) {
+			avatarMap.set(userId, avatarCache.get(userId)!);
+		} else {
+			uncachedUserIds.push(userId);
+		}
+	}
+	
+	// Récupérer seulement les avatars non cachés
+	if (uncachedUserIds.length > 0) {
 		try {
-			// Vérifier si l'utilisateur a un avatar dans le bucket
-			const { data: files } = await supabaseAdmin.storage
-				.from('avatars')
-				.list(userId);
-			
-			if (files && files.length > 0) {
-				// Prendre le premier fichier (le plus récent)
-				const fileName = files[0].name;
-				const { data: { publicUrl } } = supabaseAdmin.storage
-					.from('avatars')
-					.getPublicUrl(`${userId}/${fileName}`);
-				avatarMap.set(userId, publicUrl);
-			}
+			// Récupération en parallèle pour tous les utilisateurs non cachés
+			const avatarPromises = uncachedUserIds.map(async (userId) => {
+				try {
+					const { data: files } = await supabaseAdmin.storage
+						.from('avatars')
+						.list(userId);
+					
+					if (files && files.length > 0) {
+						const fileName = files[0].name;
+						const { data: { publicUrl } } = supabaseAdmin.storage
+							.from('avatars')
+							.getPublicUrl(`${userId}/${fileName}`);
+						
+						// Mettre en cache
+						avatarCache.set(userId, publicUrl);
+						return { userId, avatarUrl: publicUrl };
+					}
+				} catch (error) {
+					console.error(`Erreur lors de la récupération de l'avatar pour l'utilisateur ${userId}:`, error);
+				}
+				return { userId, avatarUrl: undefined };
+			});
+
+			const avatarResults = await Promise.all(avatarPromises);
+			avatarResults.forEach(({ userId, avatarUrl }) => {
+				if (avatarUrl) {
+					avatarMap.set(userId, avatarUrl);
+				}
+			});
 		} catch (error) {
-			console.error(`Erreur lors de la récupération de l'avatar pour l'utilisateur ${userId}:`, error);
+			console.error('Erreur lors de la récupération des avatars:', error);
 		}
 	}
 	
@@ -381,6 +411,11 @@ export async function getUsersAvatars(userIds: string[]) {
 }
 
 export async function getCurrentUserAvatar(userId: string) {
+	// Vérifier le cache d'abord
+	if (avatarCache.has(userId)) {
+		return avatarCache.get(userId);
+	}
+	
 	const { createClient } = await import('@/lib/supabase/server');
 	const supabase = await createClient();
 	
@@ -396,6 +431,9 @@ export async function getCurrentUserAvatar(userId: string) {
 			const { data: { publicUrl } } = supabase.storage
 				.from('avatars')
 				.getPublicUrl(`${userId}/${fileName}`);
+			
+			// Mettre en cache
+			avatarCache.set(userId, publicUrl);
 			return publicUrl;
 		}
 	} catch (error) {
@@ -405,6 +443,9 @@ export async function getCurrentUserAvatar(userId: string) {
 			const { data: { publicUrl } } = supabase.storage
 				.from('avatars')
 				.getPublicUrl(`${userId}/avatar.webp`);
+			
+			// Mettre en cache même si on ne sait pas si le fichier existe
+			avatarCache.set(userId, publicUrl);
 			return publicUrl;
 		} catch {
 			console.error(`Erreur lors de la récupération de l'avatar pour l'utilisateur ${userId}:`, error);
@@ -419,26 +460,63 @@ export async function getResourceAuthorsAvatars(ownerIds: string[]) {
 	const supabaseAdmin = createAdminClient();
 	
 	const avatarMap = new Map<string, string>();
+	const uncachedOwnerIds: string[] = [];
 	
+	// Vérifier le cache d'abord
 	for (const ownerId of ownerIds) {
+		if (avatarCache.has(ownerId)) {
+			avatarMap.set(ownerId, avatarCache.get(ownerId)!);
+		} else {
+			uncachedOwnerIds.push(ownerId);
+		}
+	}
+	
+	// Récupérer seulement les avatars non cachés
+	if (uncachedOwnerIds.length > 0) {
 		try {
-			// Vérifier si l'utilisateur a un avatar dans le bucket
-			const { data: files } = await supabaseAdmin.storage
-				.from('avatars')
-				.list(ownerId);
-			
-			if (files && files.length > 0) {
-				// Prendre le premier fichier (le plus récent)
-				const fileName = files[0].name;
-				const { data: { publicUrl } } = supabaseAdmin.storage
-					.from('avatars')
-					.getPublicUrl(`${ownerId}/${fileName}`);
-				avatarMap.set(ownerId, publicUrl);
-			}
+			// Récupération en parallèle pour tous les auteurs non cachés
+			const avatarPromises = uncachedOwnerIds.map(async (ownerId) => {
+				try {
+					const { data: files } = await supabaseAdmin.storage
+						.from('avatars')
+						.list(ownerId);
+					
+					if (files && files.length > 0) {
+						const fileName = files[0].name;
+						const { data: { publicUrl } } = supabaseAdmin.storage
+							.from('avatars')
+							.getPublicUrl(`${ownerId}/${fileName}`);
+						
+						// Mettre en cache
+						avatarCache.set(ownerId, publicUrl);
+						return { ownerId, avatarUrl: publicUrl };
+					}
+				} catch (error) {
+					console.error(`Erreur lors de la récupération de l'avatar pour l'auteur ${ownerId}:`, error);
+				}
+				return { ownerId, avatarUrl: undefined };
+			});
+
+			const avatarResults = await Promise.all(avatarPromises);
+			avatarResults.forEach(({ ownerId, avatarUrl }) => {
+				if (avatarUrl) {
+					avatarMap.set(ownerId, avatarUrl);
+				}
+			});
 		} catch (error) {
-			console.error(`Erreur lors de la récupération de l'avatar pour l'auteur ${ownerId}:`, error);
+			console.error('Erreur lors de la récupération des avatars des auteurs:', error);
 		}
 	}
 	
 	return avatarMap;
+}
+
+// Fonction pour vider le cache (utile pour les tests ou en cas de problème)
+export async function clearAvatarCache() {
+	avatarCache.clear();
+}
+
+// Fonction pour obtenir la taille du cache (utile pour le debugging)
+export async function getAvatarCacheSize() {
+	return avatarCache.size;
 }
