@@ -25,23 +25,153 @@ interface SupabaseUser {
 }
 
 export default function ProfilePage() {
-	const [filter, setFilter] = useState<string>("history");
+	const [filter, setFilter] = useState<string>("profile");
 	const [posts, setPosts] = useState<ProfilePost[]>([]);
+	const [recentActivities, setRecentActivities] = useState<ProfilePost[]>([]);
+	const [stats, setStats] = useState({ viewed: 0, saved: 0, liked: 0 });
 	const [loading, setLoading] = useState<boolean>(false);
 	const [user, setUser] = useState<SupabaseUser | null>(null);
 
-	useEffect(() => {
-		const fetchUser = async () => {
-			const supabase = createClient();
-			const { data } = await supabase.auth.getUser();
-			if (data?.user) setUser(data.user as unknown as SupabaseUser);
-			else setUser(null);
-		};
-		fetchUser();
-	}, []);
+	// Nouvelle fonction pour récupérer l'utilisateur ET son profil
+	const fetchUserWithProfile = async () => {
+		const supabase = createClient();
+		const { data } = await supabase.auth.getUser();
+		if (data?.user) {
+			// Récupérer les infos du profil dans la table public.users
+			const { data: profile } = await supabase
+				.from("users")
+				.select("firstname, lastname")
+				.eq("id", data.user.id)
+				.single();
+
+			setUser({
+				...data.user,
+				user_metadata: {
+					...data.user.user_metadata,
+					firstname: profile?.firstname ?? "",
+					lastname: profile?.lastname ?? "",
+				},
+			});
+		} else {
+			setUser(null);
+		}
+	};
 
 	useEffect(() => {
+		fetchUserWithProfile();
+	}, []);
+
+	// Récupérer les statistiques séparément
+	useEffect(() => {
 		if (!user) return;
+		
+		const fetchStats = async () => {
+			const supabase = createClient();
+			
+			// Compter les vues
+			const { count: viewedCount } = await supabase
+				.from("views")
+				.select("*", { count: "exact", head: true })
+				.eq("user_id", user.id);
+			
+			// Compter les sauvegardées
+			const { count: savedCount } = await supabase
+				.from("read_later")
+				.select("*", { count: "exact", head: true })
+				.eq("user_id", user.id);
+			
+			// Compter les likées
+			const { count: likedCount } = await supabase
+				.from("likes")
+				.select("*", { count: "exact", head: true })
+				.eq("user_id", user.id);
+			
+			setStats({
+				viewed: viewedCount || 0,
+				saved: savedCount || 0,
+				liked: likedCount || 0
+			});
+		};
+		
+		fetchStats();
+	}, [user]);
+
+	// Récupérer les activités récentes combinées
+	useEffect(() => {
+		if (!user) return;
+		
+		const fetchRecentActivities = async () => {
+			const supabase = createClient();
+			
+			// Récupérer les 3 dernières vues
+			const { data: views } = await supabase
+				.from("views")
+				.select("resource_id, viewed_at, resources:resources(*)")
+				.eq("user_id", user.id)
+				.order("viewed_at", { ascending: false })
+				.limit(3);
+			
+			// Récupérer les 3 dernières sauvegardées
+			const { data: saved } = await supabase
+				.from("read_later")
+				.select("resource_id, saved_at, resources:resources(*)")
+				.eq("user_id", user.id)
+				.order("saved_at", { ascending: false })
+				.limit(3);
+			
+			// Récupérer les 3 dernières likées
+			const { data: liked } = await supabase
+				.from("likes")
+				.select("resource_id, created_at, resources:resources(*)")
+				.eq("user_id", user.id)
+				.order("created_at", { ascending: false })
+				.limit(3);
+			
+			// Combiner toutes les activités
+			const allActivities = [
+				...(views || []).map((v) => ({
+					...v,
+					activity_type: "Consultée",
+					activity_date: v.viewed_at
+				})),
+				...(saved || []).map((s) => ({
+					...s,
+					activity_type: "Sauvegardée",
+					activity_date: s.saved_at
+				})),
+				...(liked || []).map((l) => ({
+					...l,
+					activity_type: "Likée",
+					activity_date: l.created_at
+				}))
+			];
+			
+			// Trier par date et prendre les 3 plus récentes
+			const sortedActivities = allActivities
+				.filter(a => a.resources && a.activity_date)
+				.sort((a, b) => new Date(b.activity_date!).getTime() - new Date(a.activity_date!).getTime())
+				.slice(0, 3)
+				.map((a, index) => ({
+					id: `${a.activity_type.toLowerCase()}-${a.resources.id}-${index}`,
+					category: a.activity_type,
+					title: a.resources.title,
+					summary: a.resources.content?.slice(0, 100) + "..." || "",
+					author: a.resources.owner_id ?? "",
+					date: a.activity_date || "",
+					url: `/blog-post/${a.resources.id}`,
+				}));
+			
+			setRecentActivities(sortedActivities);
+		};
+		
+		fetchRecentActivities();
+	}, [user]);
+
+	useEffect(() => {
+		if (!user || filter === "profile") {
+			setPosts([]);
+			return;
+		}
 		setLoading(true);
 		const fetchPosts = async () => {
 			const supabase = createClient();
@@ -49,19 +179,19 @@ export default function ProfilePage() {
 			if (filter === "history") {
 				query = supabase
 					.from("views")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, viewed_at, resources:resources(*)")
 					.eq("user_id", user.id)
 					.order("viewed_at", { ascending: false });
-			} else if (filter === "readlater") {
+			} else if (filter === "saved") {
 				query = supabase
 					.from("read_later")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, saved_at, resources:resources(*)")
 					.eq("user_id", user.id)
 					.order("saved_at", { ascending: false });
 			} else if (filter === "liked") {
 				query = supabase
 					.from("likes")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, created_at, resources:resources(*)")
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false });
 			}
@@ -75,20 +205,38 @@ export default function ProfilePage() {
 					owner_id?: string;
 					created_at?: string;
 				};
-				type SupabaseRow = { resources: SupabaseResource };
+				type SupabaseRow = { 
+					resources: SupabaseResource;
+					viewed_at?: string;
+					saved_at?: string;
+					created_at?: string;
+				};
 				const posts = (data as SupabaseRow[] | null || [])
 					.map((v) => v.resources)
 					.filter(Boolean)
-					.map((r) => ({
-						id: r.id?.toString(),
-						category: r.category_id?.toString() ?? "",
-						title: r.title,
-						summary: r.content ?? "",
-						author: r.owner_id ?? "",
-						date: r.created_at ?? "",
-						url: `/blog-post/${r.id}`,
-					})) as ProfilePost[];
+					.map((r, index) => {
+						// Traduire le filtre en français pour l'affichage
+						let categoryLabel = filter;
+						if (filter === "history") categoryLabel = "Consultée";
+						else if (filter === "saved") categoryLabel = "Sauvegardée";
+						else if (filter === "liked") categoryLabel = "Likée";
+						
+						return {
+							id: r.id?.toString(),
+							category: categoryLabel,
+							title: r.title,
+							summary: r.content?.slice(0, 100) + "..." || "",
+							author: r.owner_id ?? "",
+							date: (data as SupabaseRow[])[index]?.viewed_at || 
+								  (data as SupabaseRow[])[index]?.saved_at || 
+								  (data as SupabaseRow[])[index]?.created_at || 
+								  r.created_at || "",
+							url: `/blog-post/${r.id}`,
+						};
+					}) as ProfilePost[];
 				setPosts(posts);
+			} else {
+				setPosts([]);
 			}
 			setLoading(false);
 		};
@@ -97,12 +245,7 @@ export default function ProfilePage() {
 
 	const handleProfileUpdate = () => {
 		// Recharger les données utilisateur après mise à jour
-		const fetchUser = async () => {
-			const supabase = createClient();
-			const { data } = await supabase.auth.getUser();
-			if (data?.user) setUser(data.user as unknown as SupabaseUser);
-		};
-		fetchUser();
+		fetchUserWithProfile();
 	};
 
 	if (!user) {
@@ -124,15 +267,16 @@ export default function ProfilePage() {
 					<ProfileSidebar
 						filter={filter}
 						setFilter={setFilter}
-						posts={posts}
+						posts={recentActivities}
 						loading={loading}
 						user={user}
+						stats={stats}
 					/>
 				</div>
 				
 				{/* Contenu principal à droite */}
 				<main className="flex-1">
-					<Tabs defaultValue="profile" className="w-full">
+					<Tabs value={filter} onValueChange={setFilter} className="w-full">
 						<TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-6">
 							<TabsTrigger value="profile" className="flex items-center gap-2">
 								<User className="w-4 h-4" />

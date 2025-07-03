@@ -141,8 +141,12 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
           title: "Compte supprimé",
           description: "Votre compte a été supprimé avec succès.",
         });
-        // Rediriger vers la page d'accueil
-        window.location.href = '/';
+        
+        // Attendre un peu pour que le toast s'affiche
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Forcer un rafraîchissement complet de la page pour s'assurer que l'état d'authentification est correctement mis à jour
+        window.location.replace('/');
       }
     } catch (error) {
       console.error('Erreur suppression compte:', error);

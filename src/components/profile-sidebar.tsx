@@ -28,9 +28,10 @@ interface ProfileSidebarProps {
 	posts: { id: string; url: string; category: string; date: string; title: string; summary: string; author: string }[];
 	loading: boolean;
 	user: any;
+	stats: { viewed: number; saved: number; liked: number };
 }
 
-export default function ProfileSidebar({ filter, setFilter, posts, loading, user }: ProfileSidebarProps) {
+export default function ProfileSidebar({ filter, setFilter, posts, loading, user, stats }: ProfileSidebarProps) {
 	if (!user) return null;
 
 	const userFirstName = user.user_metadata?.firstname || "";
@@ -82,21 +83,21 @@ export default function ProfileSidebar({ filter, setFilter, posts, loading, user
 							<LucideEye className="w-4 h-4 text-blue-500" />
 							<span className="text-sm">Consultées</span>
 						</div>
-						<Badge variant="secondary">{posts.filter(p => p.category === "history").length}</Badge>
+						<Badge variant="secondary">{stats.viewed}</Badge>
 					</div>
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<LucideBookmark className="w-4 h-4 text-green-500" />
 							<span className="text-sm">Sauvegardées</span>
 						</div>
-						<Badge variant="secondary">{posts.filter(p => p.category === "readlater").length}</Badge>
+						<Badge variant="secondary">{stats.saved}</Badge>
 					</div>
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<LucideHeart className="w-4 h-4 text-red-500" />
 							<span className="text-sm">Likées</span>
 						</div>
-						<Badge variant="secondary">{posts.filter(p => p.category === "liked").length}</Badge>
+						<Badge variant="secondary">{stats.liked}</Badge>
 					</div>
 				</CardContent>
 			</Card>
@@ -137,7 +138,7 @@ export default function ProfileSidebar({ filter, setFilter, posts, loading, user
 							<div className="p-4 text-center text-gray-400 text-sm">Aucune activité récente.</div>
 						) : (
 							<div className="flex flex-col gap-3 w-full">
-								{posts.slice(0, 5).map((post) => (
+								{posts.slice(0, 3).map((post) => (
 									<Link
 										key={post.id}
 										href={post.url}

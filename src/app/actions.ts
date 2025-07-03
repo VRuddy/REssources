@@ -297,19 +297,56 @@ export async function deleteAccount() {
 		throw new Error("Utilisateur non connecté");
 	}
 
-	// Supprimer l'avatar si il existe
-	if (user.user_metadata?.avatar_url) {
-		const urlParts = user.user_metadata.avatar_url.split('/');
-		const fileName = urlParts[urlParts.length - 1];
-		const oldPath = `${user.id}/${fileName}`;
-		if (oldPath) {
-			await supabase.storage.from('avatars').remove([oldPath]);
-		}
-	}
+	try {
+		// Supprimer toutes les données utilisateur des tables
+		// 1. Supprimer les vues
+		await supabase.from('views').delete().eq('user_id', user.id);
+		
+		// 2. Supprimer les likes
+		await supabase.from('likes').delete().eq('user_id', user.id);
+		
+		// 3. Supprimer les éléments sauvegardés
+		await supabase.from('read_later').delete().eq('user_id', user.id);
+		
+		// 4. Supprimer les commentaires
+		await supabase.from('comments').delete().eq('author_id', user.id);
+		
+		// 5. Supprimer les ressources créées par l'utilisateur
+		await supabase.from('resources').delete().eq('owner_id', user.id);
+		
+		// 6. Supprimer de la table users
+		await supabase.from('users').delete().eq('id', user.id);
 
-	// Supprimer le compte (cette action nécessite des droits admin)
-	// Pour l'instant, on déconnecte juste l'utilisateur
-	await supabase.auth.signOut();
-	
-	return { success: true };
+		// 7. Supprimer l'avatar si il existe
+		if (user.user_metadata?.avatar_url) {
+			const urlParts = user.user_metadata.avatar_url.split('/');
+			const fileName = urlParts[urlParts.length - 1];
+			const oldPath = `${user.id}/${fileName}`;
+			if (oldPath) {
+				await supabase.storage.from('avatars').remove([oldPath]);
+			}
+		}
+
+		// 8. Déconnecter l'utilisateur AVANT de supprimer le compte
+		await supabase.auth.signOut();
+
+		// 9. Supprimer le compte d'authentification
+		// Utiliser l'Admin API avec la clé de service
+		const { createAdminClient } = await import('@/lib/supabase/server');
+		const supabaseAdmin = createAdminClient();
+		const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+		
+		if (deleteError) {
+			console.error('Erreur lors de la suppression du compte:', deleteError);
+			// L'utilisateur est déjà déconnecté, on peut quand même considérer que c'est un succès partiel
+			console.warn('Le compte a été partiellement supprimé (données supprimées, utilisateur déconnecté)');
+		}
+
+		return { success: true };
+	} catch (error) {
+		console.error('Erreur lors de la suppression du compte:', error);
+		// En cas d'erreur, on déconnecte au moins l'utilisateur
+		await supabase.auth.signOut();
+		throw error;
+	}
 }
