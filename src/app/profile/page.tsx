@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileSidebar from "@/components/profile-sidebar";
+import ProfileForm from "@/components/profile-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { User, History, Bookmark, Heart, Settings } from "lucide-react";
 
 interface ProfilePost {
 	id: string;
@@ -91,25 +95,214 @@ export default function ProfilePage() {
 		fetchPosts();
 	}, [filter, user]);
 
-	return (
-		<div className="flex min-h-screen max-w-5xl mx-auto pt-8 gap-8">
-			{/* Sidebar sous la navbar, centrée à gauche */}
-			<div className="w-full max-w-xs flex-shrink-0">
-				<ProfileSidebar
-					filter={filter}
-					setFilter={setFilter}
-					posts={posts}
-					loading={loading}
-					user={user}
-				/>
-			</div>
-			{/* Contenu principal à droite */}
-			<main className="flex-1 bg-white rounded-xl shadow p-8">
-				{/* Ici mettre le formulaire de modification du profil utilisateur */}
-				<div className="text-gray-400 text-center">
-					Modification du profil utilisateur à venir…
+	const handleProfileUpdate = () => {
+		// Recharger les données utilisateur après mise à jour
+		const fetchUser = async () => {
+			const supabase = createClient();
+			const { data } = await supabase.auth.getUser();
+			if (data?.user) setUser(data.user as unknown as SupabaseUser);
+		};
+		fetchUser();
+	};
+
+	if (!user) {
+		return (
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="text-center">
+					<div className="text-2xl font-bold mb-2">Accès refusé</div>
+					<div className="text-muted-foreground">Vous devez être connecté pour accéder à cette page.</div>
 				</div>
-			</main>
-		</div>
+			</div>
+		);
+	}
+
+	return (
+		<>
+			<div className="flex min-h-screen max-w-7xl mx-auto pt-8 gap-8 px-4">
+				{/* Sidebar sous la navbar, centrée à gauche */}
+				<div className="w-full max-w-xs flex-shrink-0">
+					<ProfileSidebar
+						filter={filter}
+						setFilter={setFilter}
+						posts={posts}
+						loading={loading}
+						user={user}
+					/>
+				</div>
+				
+				{/* Contenu principal à droite */}
+				<main className="flex-1">
+					<Tabs defaultValue="profile" className="w-full">
+						<TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-6">
+							<TabsTrigger value="profile" className="flex items-center gap-2">
+								<User className="w-4 h-4" />
+								Profil
+							</TabsTrigger>
+							<TabsTrigger value="history" className="flex items-center gap-2">
+								<History className="w-4 h-4" />
+								Historique
+							</TabsTrigger>
+							<TabsTrigger value="saved" className="flex items-center gap-2">
+								<Bookmark className="w-4 h-4" />
+								Sauvegardés
+							</TabsTrigger>
+							<TabsTrigger value="liked" className="flex items-center gap-2">
+								<Heart className="w-4 h-4" />
+								Likés
+							</TabsTrigger>
+						</TabsList>
+
+						<TabsContent value="profile" className="space-y-6">
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Settings className="w-5 h-5" />
+										Paramètres du compte
+									</CardTitle>
+									<CardDescription>
+										Gérez vos informations personnelles et vos préférences
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<ProfileForm user={user} onProfileUpdate={handleProfileUpdate} />
+								</CardContent>
+							</Card>
+						</TabsContent>
+
+						<TabsContent value="history" className="space-y-4">
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<History className="w-5 h-5" />
+										Historique de navigation
+									</CardTitle>
+									<CardDescription>
+										Vos ressources consultées récemment
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{loading ? (
+										<div className="text-center py-8">
+											<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+											<p className="mt-2 text-muted-foreground">Chargement...</p>
+										</div>
+									) : posts.length === 0 ? (
+										<div className="text-center py-8">
+											<History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+											<p className="text-muted-foreground">Aucun historique disponible</p>
+										</div>
+									) : (
+										<div className="grid gap-4">
+											{posts.map((post) => (
+												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+													<div className="flex items-center gap-2 mb-2">
+														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+															{post.category}
+														</span>
+														<span className="text-xs text-muted-foreground ml-auto">
+															{new Date(post.date).toLocaleDateString('fr-FR')}
+														</span>
+													</div>
+													<h3 className="font-semibold mb-1">{post.title}</h3>
+													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+												</div>
+											))}
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						</TabsContent>
+
+						<TabsContent value="saved" className="space-y-4">
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Bookmark className="w-5 h-5" />
+										Ressources sauvegardées
+									</CardTitle>
+									<CardDescription>
+										Vos ressources marquées pour lecture ultérieure
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{loading ? (
+										<div className="text-center py-8">
+											<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+											<p className="mt-2 text-muted-foreground">Chargement...</p>
+										</div>
+									) : posts.length === 0 ? (
+										<div className="text-center py-8">
+											<Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+											<p className="text-muted-foreground">Aucune ressource sauvegardée</p>
+										</div>
+									) : (
+										<div className="grid gap-4">
+											{posts.map((post) => (
+												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+													<div className="flex items-center gap-2 mb-2">
+														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+															{post.category}
+														</span>
+														<span className="text-xs text-muted-foreground ml-auto">
+															{new Date(post.date).toLocaleDateString('fr-FR')}
+														</span>
+													</div>
+													<h3 className="font-semibold mb-1">{post.title}</h3>
+													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+												</div>
+											))}
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						</TabsContent>
+
+						<TabsContent value="liked" className="space-y-4">
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Heart className="w-5 h-5" />
+										Ressources likées
+									</CardTitle>
+									<CardDescription>
+										Vos ressources favorites
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{loading ? (
+										<div className="text-center py-8">
+											<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+											<p className="mt-2 text-muted-foreground">Chargement...</p>
+										</div>
+									) : posts.length === 0 ? (
+										<div className="text-center py-8">
+											<Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+											<p className="text-muted-foreground">Aucune ressource likée</p>
+										</div>
+									) : (
+										<div className="grid gap-4">
+											{posts.map((post) => (
+												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+													<div className="flex items-center gap-2 mb-2">
+														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+															{post.category}
+														</span>
+														<span className="text-xs text-muted-foreground ml-auto">
+															{new Date(post.date).toLocaleDateString('fr-FR')}
+														</span>
+													</div>
+													<h3 className="font-semibold mb-1">{post.title}</h3>
+													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+												</div>
+											))}
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						</TabsContent>
+					</Tabs>
+				</main>
+			</div>
+		</>
 	);
 }
