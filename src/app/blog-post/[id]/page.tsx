@@ -6,21 +6,33 @@ import { getAuthUser } from "@/app/helper/get-user";
 
 export default async function BlogPostPage({params}: {params: Promise<{ id: string }>}) {
   const supabase = await createClient();
+  // Récupère l'utilisateur connecté (auth)
   const user = await getAuthUser();
+  // Récupère les infos détaillées de l'utilisateur depuis la table users
+  let userDetails = null;
+  if (user?.id) {
+    const { data } = await supabase
+      .from("users")
+      .select("id, firstname, lastname")
+      .eq("id", user.id)
+      .single();
+    userDetails = data;
+  }
   const { id } = await params;
-  // Récupère la ressource avec la catégorie et l'auteur
-  const { data: userDetails } = await supabase
-    .from("users")
-    .select("id, firstname, lastname")
-    .eq("id", user?.id || "")
-    .single();
+  // Récupère la ressource avec la catégorie, l'auteur et is_verified
   const { data: post } = await supabase
     .from("resources")
-    .select("id, title, content, created_at, categories(name), users(firstname, lastname)")
+    .select("id, title, content, created_at, is_verified, is_public, categories(name), users(firstname, lastname)")
     .eq("id", Number(id))
     .single();
 
   if (!post) return notFound();
+
+  // Récupère le rôle de l'utilisateur
+  const { data: userRole } = user?.id
+    ? await supabase.from("users").select("role_id").eq("id", user.id).single()
+    : { data: null };
+  const isModerator = userRole?.role_id === 3;
 
   // Récupère les commentaires pour ce post
   const { data: comments } = await supabase
@@ -58,6 +70,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
     .maybeSingle();
   const liked = likeData?.id ? true : false;
 
+
   return (
     <>
       <BlogPost
@@ -74,6 +87,9 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         liked={liked}
         userId={user?.id || null}
         resourceId={post.id}
+        isVerified={post.is_verified}
+        isModerator={isModerator}
+        isPublic={post.is_public}
       />
       <div className="max-w-2xl mx-auto w-full mt-12">
         <h2 className="text-2xl font-bold mb-4 text-center">Commentaires</h2>
@@ -83,6 +99,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
           userId={userDetails?.id || ""}
           resourceId={post.id}
           messages={flatMessages}
+          isModerator={isModerator}
         />
       </div>
     </>

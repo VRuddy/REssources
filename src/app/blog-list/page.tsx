@@ -2,56 +2,81 @@
 import { useEffect, useState } from "react";
 import { BlogList, BlogPost } from "@/components/blog-list/BlogList";
 import { createClient } from "@/lib/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
 
 export default function BlogListPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoriesList, setCategoriesList] = useState<{id: number, name: string}[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [readLaterIds, setReadLaterIds] = useState<string[]>([]);
   const [viewedIds, setViewedIds] = useState<string[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRoleId, setUserRoleId] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Déplace fetchData hors du useEffect pour pouvoir l'utiliser ailleurs
+  const fetchData = async () => {
+    const supabase = createClient();
+    // Get current user
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+    setUserId(user?.id || null);
+    let roleId: number | null = null;
+    if (user?.id) {
+      // Get user role
+      const { data: userInfo } = await supabase
+        .from("users")
+        .select("role_id")
+        .eq("id", user.id)
+        .single();
+      roleId = userInfo?.role_id ?? null;
+      setUserRoleId(roleId);
+    }
+    // Récupère les catégories
+    const { data: catData } = await supabase.from("categories").select("id, name");
+    setCategories(catData?.map((c) => c.name) || []);
+    setCategoriesList(catData || []);
+    // Récupère les ressources avec leur catégorie, le display_name du créateur, is_public et is_verified
+    const query = supabase
+      .from("resources")
+      .select("id, title, content, created_at, owner_id, category_id, is_public, is_verified, categories(name), users(firstname, lastname)")
+      .order("created_at", { ascending: false });
+
+    const { data: resources } = await query;
+    // Mapping pour BlogList
+    const mapped = (resources || []).map((r) => ({
+      id: r.id.toString(),
+      category: r.categories?.name || "Ressource",
+      title: r.title,
+      summary: r.content?.slice(0, 120) || "",
+      author: r.users?.firstname || "Anonyme",
+      date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
+      url: `/blog-post/${r.id}`,
+      is_public: r.is_public,
+      is_verified: r.is_verified,
+    }));
+    setPosts(mapped);
+    // Get read_later ids for current user
+    if (user?.id) {
+      const { data: readLater } = await supabase
+        .from("read_later")
+        .select("resource_id")
+        .eq("user_id", user.id);
+      setReadLaterIds(readLater?.map((r) => r.resource_id.toString()) || []);
+      // Get viewed ids for current user
+      const { data: views } = await supabase
+        .from("views")
+        .select("resource_id")
+        .eq("user_id", user.id);
+      setViewedIds(views?.map((v) => v.resource_id.toString()) || []);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const supabase = createClient();
-      // Get current user
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData?.user;
-      setUserId(user?.id || null);
-      // Récupère les catégories
-      const { data: catData } = await supabase.from("categories").select("name");
-      setCategories(catData?.map((c) => c.name) || []);
-      // Récupère les ressources avec leur catégorie et le display_name du créateur
-      const { data: resources } = await supabase
-        .from("resources")
-        .select("id, title, content, created_at, owner_id, category_id, categories(name), users(firstname, lastname)")
-        .order("created_at", { ascending: false });
-      // Mapping pour BlogList
-      const mapped = (resources || []).map((r) => ({
-        id: r.id.toString(),
-        category: r.categories?.name || "Ressource",
-        title: r.title,
-        summary: r.content?.slice(0, 120) || "",
-        author: r.users?.firstname || "Anonyme",
-        date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
-        url: `/blog-post/${r.id}`,
-      }));
-      setPosts(mapped);
-      // Get read_later ids for current user
-      if (user?.id) {
-        const { data: readLater } = await supabase
-          .from("read_later")
-          .select("resource_id")
-          .eq("user_id", user.id);
-        setReadLaterIds(readLater?.map((r) => r.resource_id.toString()) || []);
-        // Get viewed ids for current user
-        const { data: views } = await supabase
-          .from("views")
-          .select("resource_id")
-          .eq("user_id", user.id);
-        setViewedIds(views?.map((v) => v.resource_id.toString()) || []);
-      }
-    };
     fetchData();
   }, []);
 
@@ -81,15 +106,55 @@ export default function BlogListPage() {
     ? posts.filter((p) => p.category === selectedCategory)
     : posts;
 
+  // Ajout d'une ressource
+  const handleAddResource = async (values: { title: string; content: string; isPublic: boolean; categoryId: number | null; }) => {
+    if (!userId) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("resources").insert({
+      title: values.title,
+      content: values.content,
+      is_public: values.isPublic,
+      owner_id: userId,
+      is_verified: false,
+      category_id: values.categoryId,
+    });
+    setLoading(false);
+    if (!error) {
+      setOpen(false);
+      // Rafraîchir la page ou rappeler fetchData
+      fetchData();
+    }
+  };
+
   return (
-    <BlogList
-      posts={filteredPosts}
-      categories={categories}
-      onCategoryClick={setSelectedCategory}
-      selectedCategory={selectedCategory}
-      readLaterIds={readLaterIds}
-      onToggleReadLater={toggleReadLater}
-      viewedIds={viewedIds}
-    />
+    <>
+        <Button onClick={() => setOpen(true)}>
+          + Ajouter une ressource
+        </Button>
+      <BlogList
+        posts={filteredPosts}
+        categories={categories}
+        onCategoryClick={setSelectedCategory}
+        selectedCategory={selectedCategory}
+        readLaterIds={readLaterIds}
+        onToggleReadLater={toggleReadLater}
+        viewedIds={viewedIds}
+        isModerator={userRoleId === 3}
+      />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg w-full">
+          <DialogHeader>
+            <DialogTitle>Ajouter une ressource</DialogTitle>
+          </DialogHeader>
+          <AddOrEditResourceForm
+            categories={categoriesList}
+            loading={loading}
+            onSubmit={handleAddResource}
+            onCancel={() => setOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

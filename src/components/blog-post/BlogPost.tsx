@@ -1,7 +1,8 @@
 "use client"
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { LucideHeart } from "lucide-react";
+import { LucideHeart, LucideCheckCircle, LucideXCircle, LucideShare2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 
 interface BlogPostProps {
@@ -22,6 +23,9 @@ interface BlogPostProps {
   liked: boolean;
   userId: string | null;
   resourceId: number;
+  isVerified?: boolean;
+  isModerator?: boolean;
+  isPublic?: boolean;
 }
 
 export function BlogPost({
@@ -40,9 +44,15 @@ export function BlogPost({
   liked,
   userId,
   resourceId,
-}: BlogPostProps) {
+  isVerified = false,
+  isModerator = false,
+  isPublic = true,
+}: BlogPostProps & { isPublic: boolean }) {
   const [isLiked, setIsLiked] = useState(liked);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [verified, setVerified] = useState(isVerified);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setIsLiked(liked);
@@ -68,6 +78,23 @@ export function BlogPost({
     setLikeLoading(false);
   };
 
+  const handleToggleVerify = async () => {
+    setVerifyLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("resources")
+      .update({ is_verified: !verified })
+      .eq("id", resourceId);
+    if (!error) setVerified((v) => !v);
+    setVerifyLoading(false);
+  };
+
+  const handleShare = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <section className="pb-32 flex flex-col items-center w-full">
       <div className="bg-muted bg-[url('/images/block/patterns/dot-pattern-2.svg')] bg-[length:3.125rem_3.125rem] bg-repeat py-20 w-full flex flex-col items-center">
@@ -88,6 +115,21 @@ export function BlogPost({
                 </ol>
               </nav>
               <div className="flex w-full flex-col gap-5">
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <Badge variant={isPublic ? "default" : "secondary"} className={isPublic ? "bg-green-500" : "bg-yellow-500"}>
+                    {isPublic ? "Public" : "Privé"}
+                  </Badge>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-muted hover:bg-primary/10 border text-sm"
+                    onClick={handleShare}
+                  >
+                    <LucideShare2 size={18} /> Partager
+                  </button>
+                  {copied && (
+                    <span className="ml-2 text-green-600 text-xs font-semibold">Lien copié !</span>
+                  )}
+                </div>
                 <div className="text-muted-2-foreground flex items-center justify-center gap-2.5 text-sm font-medium">
                   <div>{readTime}</div>
                   <div>|</div>
@@ -156,6 +198,23 @@ export function BlogPost({
                       <LucideHeart className="text-muted-foreground" size={18} />
                     )}
                   </button>
+                )}
+                {isModerator && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="ml-1 p-0 bg-transparent border-0 cursor-pointer focus:outline-none"
+                      onClick={handleToggleVerify}
+                      disabled={verifyLoading}
+                      title={verified ? "Rendre non validé" : "Valider"}
+                    >
+                      {verified ? (
+                        <LucideCheckCircle className="text-green-500" size={20} />
+                      ) : (
+                        <LucideXCircle className="text-orange-400" size={20} />
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

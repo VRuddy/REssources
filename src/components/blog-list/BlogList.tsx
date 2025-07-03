@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { LucideBookmark, LucideBookmarkCheck, LucideEye } from "lucide-react";
+import { LucideBookmark, LucideBookmarkCheck, LucideEye, LucideCheckCircle, LucideXCircle } from "lucide-react";
 
 export interface BlogPost {
   id: string;
@@ -13,6 +13,8 @@ export interface BlogPost {
   author: string;
   date: string;
   url: string;
+  is_public: boolean;
+  is_verified?: boolean; // Added property
 }
 
 interface BlogListProps {
@@ -26,6 +28,7 @@ interface BlogListProps {
   readLaterIds?: string[];
   onToggleReadLater?: (postId: string) => void;
   viewedIds?: string[];
+  isModerator?: boolean;
 }
 
 export function BlogList({
@@ -39,18 +42,19 @@ export function BlogList({
   readLaterIds = [],
   onToggleReadLater,
   viewedIds = [],
+  isModerator = false,
 }: BlogListProps) {
   const router = useRouter();
 
   return (
     <section className="py-32 flex flex-col items-center w-full">
       <div className="container flex flex-col items-center">
-        <div className="flex flex-col items-center gap-6 text-center w-full">
+<div className="flex flex-col items-center gap-6 text-center w-full">
           <Badge>{badge}</Badge>
           <h1 className="text-4xl font-bold lg:text-7xl">{title}</h1>
           <p className="text-balance lg:text-xl">{description}</p>
         </div>
-        <div className="mx-auto mt-20 grid max-w-7xl w-full grid-cols-1 gap-20 lg:grid-cols-4">
+        <div className="mx-20to mt-20 grid max-w-7xl w-full grid-cols-1 gap-20 lg:grid-cols-4">
           {/* Sidebar categories */}
           <div className="hidden flex-col gap-2 lg:flex">
             <Button
@@ -104,6 +108,16 @@ export function BlogList({
                 >
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-muted-foreground">{post.category}</p>
+                    <Badge variant={post.is_public ? "default" : "secondary"} className={post.is_public ? "bg-green-500" : "bg-yellow-500"}>
+                      {post.is_public ? "Public" : "Privé"}
+                    </Badge>
+                    {isModerator && (
+                      post.is_verified ? (
+                        <LucideCheckCircle className="text-green-500" size={18} />
+                      ) : (
+                        <LucideXCircle className="text-orange-400" size={18} />
+                      )
+                    )}
                   </div>
                   <h3 className="text-2xl font-semibold text-balance lg:text-3xl">{post.title}</h3>
                   <p className="text-muted-foreground">{post.summary}</p>

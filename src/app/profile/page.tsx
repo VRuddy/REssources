@@ -45,19 +45,19 @@ export default function ProfilePage() {
 			if (filter === "history") {
 				query = supabase
 					.from("views")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("viewed_at", { ascending: false });
 			} else if (filter === "readlater") {
 				query = supabase
 					.from("read_later")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("saved_at", { ascending: false });
 			} else if (filter === "liked") {
 				query = supabase
 					.from("likes")
-					.select("resource_id, resources:resources(*)")
+					.select("resource_id, resources:resources(id, category_id, title, content, owner_id, created_at, users(firstname, lastname))")
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false });
 			}
@@ -70,6 +70,7 @@ export default function ProfilePage() {
 					content?: string;
 					owner_id?: string;
 					created_at?: string;
+					users?: { firstname?: string; lastname?: string };
 				};
 				type SupabaseRow = { resources: SupabaseResource };
 				const posts = (data as SupabaseRow[] | null || [])
@@ -80,7 +81,7 @@ export default function ProfilePage() {
 						category: r.category_id?.toString() ?? "",
 						title: r.title,
 						summary: r.content ?? "",
-						author: r.owner_id ?? "",
+						author: r.users ? `${r.users.firstname ?? ""} ${r.users.lastname ?? ""}`.trim() : "Anonyme",
 						date: r.created_at ?? "",
 						url: `/blog-post/${r.id}`,
 					})) as ProfilePost[];

@@ -8,7 +8,7 @@ import {
 } from '@/hooks/use-realtime-chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, X } from 'lucide-react'
+import { Send, X, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -19,6 +19,7 @@ interface RealtimeChatProps {
   resourceId: number;
   onMessage?: (messages: ChatMessage[]) => void;
   messages?: ChatMessage[];
+  isModerator?: boolean;
 }
 
 // Define a threaded message type
@@ -41,6 +42,7 @@ export const RealtimeChat = ({
   resourceId,
   onMessage,
   messages: initialMessages = [],
+  isModerator = false,
 }: RealtimeChatProps) => {
   const { containerRef, scrollToBottom } = useChatScroll()
 
@@ -58,9 +60,16 @@ export const RealtimeChat = ({
   const previousMessageCount = useRef(0)
   const shouldScrollToBottom = useRef(true)
 
+  // Utilisation d'un state local pour les messages (optimistic update simple)
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(initialMessages);
+
+  useEffect(() => {
+    setLocalMessages(initialMessages);
+  }, [initialMessages]);
+
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
-    const mergedMessages = [...initialMessages, ...realtimeMessages]
+    const mergedMessages = [...localMessages, ...realtimeMessages]
     // Remove duplicates based on message id
     const uniqueMessages = mergedMessages.filter(
       (message, index, self) => index === self.findIndex((m) => m.id === message.id)
@@ -73,7 +82,7 @@ export const RealtimeChat = ({
     })
 
     return sortedMessages
-  }, [initialMessages, realtimeMessages])
+  }, [localMessages, realtimeMessages])
 
   useEffect(() => {
     if (onMessage) {
@@ -154,6 +163,24 @@ export const RealtimeChat = ({
     setReplyTo(messageId);
   }, [])
 
+  // Ajout d'un état local pour forcer le refresh après suppression
+
+  // Fonction pour supprimer un commentaire
+  const handleDeleteMessage = useCallback(
+    async (messageId: number) => {
+      // Optimistic update: retire le message du state local
+      setLocalMessages((msgs) => msgs.filter((msg) => msg.id !== messageId));
+      // Suppression en base (et on attend la réponse)
+      const supabase = createClient();
+      const { error } = await supabase.from('comments').delete().eq('id', messageId);
+      if (error) {
+        alert("Erreur lors de la suppression du commentaire.");
+        // Optionnel : tu pourrais recharger les messages ou réafficher le message supprimé
+      }
+    },
+    []
+  )
+
   // Composant récursif pour afficher les threads (limité à 1 niveau)
   function Thread({ messages, level = 0 }: { messages: ThreadedMessage[], level?: number }) {
     return (
@@ -177,6 +204,16 @@ export const RealtimeChat = ({
                 replyCount={replyCount}
                 parentMessage={parentMessage}
               />
+              {isModerator && (
+                <button
+                  type="button"
+                  className="opacity-70 hover:opacity-100 text-destructive p-1 ml-1 mt-1"
+                  title="Supprimer le commentaire"
+                  onClick={() => handleDeleteMessage(message.id as number)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               {/* Afficher les réponses seulement si on est au niveau 0 et qu'elles existent */}
               {hasReplies && !isCollapsed && level === 0 && (
                 <Thread messages={message.replies} level={1} />
