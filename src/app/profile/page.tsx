@@ -31,6 +31,7 @@ export default function ProfilePage() {
 	const [stats, setStats] = useState({ viewed: 0, saved: 0, liked: 0 });
 	const [loading, setLoading] = useState<boolean>(false);
 	const [user, setUser] = useState<SupabaseUser | null>(null);
+	const [checkingAuth, setCheckingAuth] = useState(true);
 
 	// Nouvelle fonction pour récupérer l'utilisateur ET son profil
 	const fetchUserWithProfile = async () => {
@@ -58,7 +59,8 @@ export default function ProfilePage() {
 	};
 
 	useEffect(() => {
-		fetchUserWithProfile();
+		setCheckingAuth(true);
+		fetchUserWithProfile().finally(() => setCheckingAuth(false));
 	}, []);
 
 	// Récupérer les statistiques séparément
@@ -248,6 +250,17 @@ export default function ProfilePage() {
 		fetchUserWithProfile();
 	};
 
+	if (checkingAuth) {
+		return (
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+					<div className="text-muted-foreground">Vérification de l&apos;authentification...</div>
+				</div>
+			</div>
+		);
+	}
+
 	if (!user) {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
@@ -261,41 +274,64 @@ export default function ProfilePage() {
 
 	return (
 		<>
-			<div className="flex min-h-screen max-w-7xl mx-auto pt-8 gap-8 px-4">
-				{/* Sidebar sous la navbar, centrée à gauche */}
-				<div className="w-full max-w-xs flex-shrink-0">
+			<div className="flex flex-col lg:flex-row min-h-screen max-w-7xl mx-auto pt-8 gap-4 lg:gap-8 px-2 sm:px-4">
+				{/* Sidebar au-dessus sur mobile, à gauche sur desktop */}
+				<div className="w-full mb-6 lg:mb-0 lg:max-w-xs flex-shrink-0">
 					<ProfileSidebar
-						filter={filter}
-						setFilter={setFilter}
 						posts={recentActivities}
 						loading={loading}
 						user={user}
 						stats={stats}
 					/>
 				</div>
-				
-				{/* Contenu principal à droite */}
-				<main className="flex-1">
+				{/* Contenu principal à droite ou en dessous */}
+				<main className="flex-1 mt-0">
 					<Tabs value={filter} onValueChange={setFilter} className="w-full">
-						<TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-6">
-							<TabsTrigger value="profile" className="flex items-center gap-2">
-								<User className="w-4 h-4" />
-								Profil
-							</TabsTrigger>
-							<TabsTrigger value="history" className="flex items-center gap-2">
-								<History className="w-4 h-4" />
-								Historique
-							</TabsTrigger>
-							<TabsTrigger value="saved" className="flex items-center gap-2">
-								<Bookmark className="w-4 h-4" />
-								Sauvegardés
-							</TabsTrigger>
-							<TabsTrigger value="liked" className="flex items-center gap-2">
-								<Heart className="w-4 h-4" />
-								Likés
-							</TabsTrigger>
-						</TabsList>
-
+						{/* Onglets scroll horizontal mobile */}
+						<div className="block lg:hidden w-full overflow-x-auto scrollbar-hide py-2 bg-background">
+							<div className="flex gap-2 px-2">
+								<TabsList className="flex flex-row min-w-max gap-2">
+									<TabsTrigger value="profile" className="flex items-center gap-2 min-w-[120px]">
+										<User className="w-4 h-4" />
+										Profil
+									</TabsTrigger>
+									<TabsTrigger value="history" className="flex items-center gap-2 min-w-[120px]">
+										<History className="w-4 h-4" />
+										Historique
+									</TabsTrigger>
+									<TabsTrigger value="saved" className="flex items-center gap-2 min-w-[120px]">
+										<Bookmark className="w-4 h-4" />
+										Sauvegardés
+									</TabsTrigger>
+									<TabsTrigger value="liked" className="flex items-center gap-2 min-w-[120px]">
+										<Heart className="w-4 h-4" />
+										Likés
+									</TabsTrigger>
+								</TabsList>
+							</div>
+						</div>
+						{/* Onglets grille desktop */}
+						<div className="hidden lg:block">
+							<TabsList className="grid w-full grid-cols-4 mb-6 gap-2">
+								<TabsTrigger value="profile" className="flex items-center gap-2">
+									<User className="w-4 h-4" />
+									Profil
+								</TabsTrigger>
+								<TabsTrigger value="history" className="flex items-center gap-2">
+									<History className="w-4 h-4" />
+									Historique
+								</TabsTrigger>
+								<TabsTrigger value="saved" className="flex items-center gap-2">
+									<Bookmark className="w-4 h-4" />
+									Sauvegardés
+								</TabsTrigger>
+								<TabsTrigger value="liked" className="flex items-center gap-2">
+									<Heart className="w-4 h-4" />
+									Likés
+								</TabsTrigger>
+							</TabsList>
+						</div>
+						{/* Contenus */}
 						<TabsContent value="profile" className="space-y-6">
 							<Card>
 								<CardHeader>
@@ -308,7 +344,9 @@ export default function ProfilePage() {
 									</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<ProfileForm user={user} onProfileUpdate={handleProfileUpdate} />
+									{user && (
+										<ProfileForm user={user} onProfileUpdate={handleProfileUpdate} />
+									)}
 								</CardContent>
 							</Card>
 						</TabsContent>

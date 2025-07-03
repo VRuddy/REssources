@@ -189,7 +189,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="relative">
               <Avatar className="w-24 h-24">
                 <AvatarImage src={avatarUrl || undefined} alt="Photo de profil" />
@@ -203,13 +203,14 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById('avatar-upload')?.click()}
                   disabled={uploading}
+                  className="w-full sm:w-auto"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   {avatarUrl ? 'Modifier' : 'Ajouter'}
@@ -220,6 +221,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
                     size="sm"
                     onClick={handleAvatarDelete}
                     disabled={uploading}
+                    className="w-full sm:w-auto"
                   >
                     <X className="w-4 h-4 mr-2" />
                     Supprimer
@@ -296,7 +298,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
       </Card>
 
       {/* Section Suppression de compte */}
-      <Card className="border-destructive">
+      <Card className="border-destructive mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="w-5 h-5" />
@@ -314,9 +316,9 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={loading}>
+                <Button variant="destructive" disabled={loading} className="w-full whitespace-normal break-words">
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer mon compte
+                  <span className="block sm:inline">Supprimer mon compte</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
