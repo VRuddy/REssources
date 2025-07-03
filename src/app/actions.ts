@@ -350,3 +350,95 @@ export async function deleteAccount() {
 		throw error;
 	}
 }
+
+export async function getUsersAvatars(userIds: string[]) {
+	const { createAdminClient } = await import('@/lib/supabase/server');
+	const supabaseAdmin = createAdminClient();
+	
+	const avatarMap = new Map<string, string>();
+	
+	for (const userId of userIds) {
+		try {
+			// Vérifier si l'utilisateur a un avatar dans le bucket
+			const { data: files } = await supabaseAdmin.storage
+				.from('avatars')
+				.list(userId);
+			
+			if (files && files.length > 0) {
+				// Prendre le premier fichier (le plus récent)
+				const fileName = files[0].name;
+				const { data: { publicUrl } } = supabaseAdmin.storage
+					.from('avatars')
+					.getPublicUrl(`${userId}/${fileName}`);
+				avatarMap.set(userId, publicUrl);
+			}
+		} catch (error) {
+			console.error(`Erreur lors de la récupération de l'avatar pour l'utilisateur ${userId}:`, error);
+		}
+	}
+	
+	return avatarMap;
+}
+
+export async function getCurrentUserAvatar(userId: string) {
+	const { createClient } = await import('@/lib/supabase/server');
+	const supabase = await createClient();
+	
+	try {
+		// Vérifier si l'utilisateur a un avatar dans le bucket
+		const { data: files } = await supabase.storage
+			.from('avatars')
+			.list(userId);
+		
+		if (files && files.length > 0) {
+			// Prendre le premier fichier (le plus récent)
+			const fileName = files[0].name;
+			const { data: { publicUrl } } = supabase.storage
+				.from('avatars')
+				.getPublicUrl(`${userId}/${fileName}`);
+			return publicUrl;
+		}
+	} catch (error) {
+		// Si on ne peut pas lister les fichiers, on essaie de générer l'URL directement
+		// en supposant qu'il y a un fichier avec l'extension .webp
+		try {
+			const { data: { publicUrl } } = supabase.storage
+				.from('avatars')
+				.getPublicUrl(`${userId}/avatar.webp`);
+			return publicUrl;
+		} catch {
+			console.error(`Erreur lors de la récupération de l'avatar pour l'utilisateur ${userId}:`, error);
+		}
+	}
+	
+	return undefined;
+}
+
+export async function getResourceAuthorsAvatars(ownerIds: string[]) {
+	const { createAdminClient } = await import('@/lib/supabase/server');
+	const supabaseAdmin = createAdminClient();
+	
+	const avatarMap = new Map<string, string>();
+	
+	for (const ownerId of ownerIds) {
+		try {
+			// Vérifier si l'utilisateur a un avatar dans le bucket
+			const { data: files } = await supabaseAdmin.storage
+				.from('avatars')
+				.list(ownerId);
+			
+			if (files && files.length > 0) {
+				// Prendre le premier fichier (le plus récent)
+				const fileName = files[0].name;
+				const { data: { publicUrl } } = supabaseAdmin.storage
+					.from('avatars')
+					.getPublicUrl(`${ownerId}/${fileName}`);
+				avatarMap.set(ownerId, publicUrl);
+			}
+		} catch (error) {
+			console.error(`Erreur lors de la récupération de l'avatar pour l'auteur ${ownerId}:`, error);
+		}
+	}
+	
+	return avatarMap;
+}

@@ -377,7 +377,11 @@ export default function ProfilePage() {
 									) : (
 										<div className="grid gap-4">
 											{posts.map((post) => (
-												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+												<a
+													key={post.id}
+													href={post.url}
+													className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer block"
+												>
 													<div className="flex items-center gap-2 mb-2">
 														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
 															{post.category}
@@ -388,7 +392,7 @@ export default function ProfilePage() {
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
 													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
-												</div>
+												</a>
 											))}
 										</div>
 									)}
@@ -421,7 +425,11 @@ export default function ProfilePage() {
 									) : (
 										<div className="grid gap-4">
 											{posts.map((post) => (
-												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+												<a
+													key={post.id}
+													href={post.url}
+													className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer block"
+												>
 													<div className="flex items-center gap-2 mb-2">
 														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
 															{post.category}
@@ -432,7 +440,7 @@ export default function ProfilePage() {
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
 													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
-												</div>
+												</a>
 											))}
 										</div>
 									)}
@@ -465,7 +473,11 @@ export default function ProfilePage() {
 									) : (
 										<div className="grid gap-4">
 											{posts.map((post) => (
-												<div key={post.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+												<a
+													key={post.id}
+													href={post.url}
+													className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer block"
+												>
 													<div className="flex items-center gap-2 mb-2">
 														<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
 															{post.category}
@@ -476,7 +488,7 @@ export default function ProfilePage() {
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
 													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
-												</div>
+												</a>
 											))}
 										</div>
 									)}

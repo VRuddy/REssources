@@ -1,8 +1,8 @@
 "use client"
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { LucideHeart, LucideCheckCircle, LucideXCircle, LucideShare2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 
 interface BlogPostProps {
@@ -167,16 +167,12 @@ export function BlogPost({
           {/* Main content */}
           <div className="flex w-full max-w-[40rem] flex-col gap-10 mx-auto items-center">
             <div className="flex items-center gap-2.5">
-              <span className="relative flex shrink-0 overflow-hidden rounded-full size-12 border">
-                {author.avatarUrl ? (
-                  <Image
-                    width={48}
-                    height={48}
-                   className="aspect-square size-full" alt={author.name} src={author.avatarUrl} />
-                ) : (
-                  <span className="size-full flex items-center justify-center bg-muted text-muted-foreground">{author.name[0]}</span>
-                )}
-              </span>
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={author.avatarUrl} alt={author.name} />
+                <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                  {author.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex items-center gap-2">
                 <div className="text-sm font-normal leading-normal flex items-center gap-1">
                   {author.name}

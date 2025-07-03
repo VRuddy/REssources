@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { LucideBookmark, LucideBookmarkCheck, LucideEye, LucideCheckCircle, LucideXCircle } from "lucide-react";
@@ -11,6 +12,7 @@ export interface BlogPost {
   title: string;
   summary: string;
   author: string;
+  authorAvatarUrl?: string;
   date: string;
   url: string;
   is_public: boolean;
@@ -122,6 +124,12 @@ export function BlogList({
                   <h3 className="text-2xl font-semibold text-balance lg:text-3xl">{post.title}</h3>
                   <p className="text-muted-foreground">{post.summary}</p>
                   <div className="mt-3 flex items-center gap-2 text-sm">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={post.authorAvatarUrl} alt={post.author} />
+                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                        {post.author.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="font-medium">{post.author}</span>
                     <span className="text-muted-foreground">le {post.date}</span>
                     {viewedIds.includes(post.id) && (

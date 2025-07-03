@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BlogPost } from "@/components/blog-post/BlogPost";
 import { RealtimeChat } from "@/components/realtime-chat";
 import { getAuthUser } from "@/app/helper/get-user";
+import { getUsersAvatars, getCurrentUserAvatar } from "@/app/actions";
 
 export default async function BlogPostPage({params}: {params: Promise<{ id: string }>}) {
   const supabase = await createClient();
@@ -22,7 +23,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
   // Récupère la ressource avec la catégorie, l'auteur et is_verified
   const { data: post } = await supabase
     .from("resources")
-    .select("id, title, content, created_at, is_verified, is_public, categories(name), users(firstname, lastname)")
+    .select("id, title, content, created_at, is_verified, is_public, owner_id, categories(name), users(firstname, lastname)")
     .eq("id", Number(id))
     .single();
 
@@ -41,13 +42,27 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
     .eq("resource_id", Number(id))
     .order("created_at", { ascending: true });
 
+  // Récupère les avatars des utilisateurs qui ont commenté
+  const authorIds = [...new Set((comments || []).map(c => c.author_id).filter((id): id is string => id !== null))];
+  const avatarMap = await getUsersAvatars(authorIds);
+  
+  // Récupère l'avatar de l'utilisateur connecté
+  const currentUserAvatar = user?.id ? await getCurrentUserAvatar(user.id) : undefined;
+  
+  // Récupère l'avatar de l'auteur de la ressource
+  const authorAvatar = post.owner_id ? await getCurrentUserAvatar(post.owner_id) : undefined;
+
   // On mappe les commentaires pour inclure parent_comment_id et user
   const flatMessages = (comments || []).map((c) => ({
     id: Number(c.id),
     content: c.content,
     createdAt: c.created_at || '',
     parent_comment_id: c.parent_comment_id,
-    user: { name: c.users?.firstname || "Anonyme", id: c.author_id },
+    user: { 
+      name: c.users?.firstname || "Anonyme", 
+      id: c.author_id,
+      avatarUrl: c.author_id ? avatarMap.get(c.author_id) || undefined : undefined
+    },
   }));
 
   // Passe la liste plate à RealtimeChat (PAS d'appel à buildThread ici)
@@ -79,7 +94,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         content={post.content}
         author={{
           name: post.users?.firstname || "Anonyme",
-          // avatarUrl: post.users?.avatar_url, // décommente si tu as ce champ
+          avatarUrl: authorAvatar,
           role: "Auteur",
         }}
         date={post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
@@ -98,6 +113,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
           username={userDetails?.firstname || "Anonyme"}
           userId={userDetails?.id || ""}
           resourceId={post.id}
+          avatarUrl={currentUserAvatar}
           messages={flatMessages}
           isModerator={isModerator}
         />

@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/hooks/use-realtime-chat'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageCircle, ChevronDown, ChevronRight, Reply } from 'lucide-react'
 
 interface ChatMessageItemProps {
@@ -67,21 +68,24 @@ export const ChatMessageItem = ({
         "flex gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors relative",
         level > 0 && "bg-muted/10"
       )}>
-        {/* Avatar placeholder */}
-        <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0",
-          isOwnMessage 
-            ? "bg-primary" 
-            : level === 0 
-              ? "bg-gradient-to-br from-blue-500 to-purple-600"
-              : level === 1
-                ? "bg-gradient-to-br from-green-500 to-blue-500"
-                : level === 2
-                  ? "bg-gradient-to-br from-purple-500 to-pink-500"
-                  : "bg-gradient-to-br from-orange-500 to-red-500"
-        )}>
-          {message.user.name.charAt(0).toUpperCase()}
-        </div>
+        {/* Avatar */}
+        <Avatar className="w-8 h-8 shrink-0">
+          <AvatarImage src={message.user.avatarUrl} alt={message.user.name} />
+          <AvatarFallback className={cn(
+            "text-xs font-medium text-white",
+            isOwnMessage 
+              ? "bg-primary" 
+              : level === 0 
+                ? "bg-gradient-to-br from-blue-500 to-purple-600"
+                : level === 1
+                  ? "bg-gradient-to-br from-green-500 to-blue-500"
+                  : level === 2
+                    ? "bg-gradient-to-br from-purple-500 to-pink-500"
+                    : "bg-gradient-to-br from-orange-500 to-red-500"
+          )}>
+            {message.user.name.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
 
         <div className="flex-1 min-w-0">
           {/* En réponse à... */}

@@ -17,6 +17,7 @@ interface RealtimeChatProps {
   username: string;
   userId: string;
   resourceId: number;
+  avatarUrl?: string;
   onMessage?: (messages: ChatMessage[]) => void;
   messages?: ChatMessage[];
   isModerator?: boolean;
@@ -40,6 +41,7 @@ export const RealtimeChat = ({
   username,
   userId,
   resourceId,
+  avatarUrl,
   onMessage,
   messages: initialMessages = [],
   isModerator = false,
@@ -53,6 +55,7 @@ export const RealtimeChat = ({
   } = useRealtimeChat({
     roomName,
     username,
+    avatarUrl,
   })
   const [newMessage, setNewMessage] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)

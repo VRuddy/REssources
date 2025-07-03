@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 interface UseRealtimeChatProps {
   roomName: string
   username: string
+  avatarUrl?: string
 }
 
 export interface ChatMessage {
@@ -13,6 +14,7 @@ export interface ChatMessage {
   content: string
   user: {
     name: string
+    avatarUrl?: string
   }
   createdAt: string
   parent_comment_id?: number | null
@@ -20,7 +22,7 @@ export interface ChatMessage {
 
 const EVENT_MESSAGE_TYPE = 'message'
 
-export function useRealtimeChat({ roomName, username }: UseRealtimeChatProps) {
+export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeChatProps) {
   const supabase = createClient()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null)
@@ -55,6 +57,7 @@ export function useRealtimeChat({ roomName, username }: UseRealtimeChatProps) {
         content,
         user: {
           name: username,
+          avatarUrl,
         },
         createdAt: new Date().toISOString(),
         parent_comment_id: parent_comment_id ?? null,
@@ -66,7 +69,7 @@ export function useRealtimeChat({ roomName, username }: UseRealtimeChatProps) {
         payload: message,
       })
     },
-    [channel, isConnected, username]
+    [channel, isConnected, username, avatarUrl]
   )
 
   return { messages, sendMessage, isConnected }

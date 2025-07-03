@@ -6,6 +6,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
 
+// Fonction pour récupérer les avatars des auteurs côté client
+const getAuthorsAvatars = async (ownerIds: string[]) => {
+  const supabase = createClient();
+  const avatarMap = new Map<string, string>();
+  
+  for (const ownerId of ownerIds) {
+    try {
+      // Vérifier si l'utilisateur a un avatar dans le bucket
+      const { data: files } = await supabase.storage
+        .from('avatars')
+        .list(ownerId);
+      
+      if (files && files.length > 0) {
+        // Prendre le premier fichier (le plus récent)
+        const fileName = files[0].name;
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(`${ownerId}/${fileName}`);
+        avatarMap.set(ownerId, publicUrl);
+      }
+    } catch (error) {
+      console.error(`Erreur lors de la récupération de l'avatar pour l'auteur ${ownerId}:`, error);
+    }
+  }
+  
+  return avatarMap;
+};
+
 export default function BlogListPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -47,6 +75,11 @@ export default function BlogListPage() {
       .order("created_at", { ascending: false });
 
     const { data: resources } = await query;
+    
+    // Récupère les avatars des auteurs
+    const ownerIds = [...new Set((resources || []).map(r => r.owner_id).filter((id): id is string => id !== null))];
+    const avatarMap = await getAuthorsAvatars(ownerIds);
+    
     // Mapping pour BlogList
     const mapped = (resources || []).map((r) => ({
       id: r.id.toString(),
@@ -54,6 +87,7 @@ export default function BlogListPage() {
       title: r.title,
       summary: r.content?.slice(0, 120) || "",
       author: r.users?.firstname || "Anonyme",
+      authorAvatarUrl: r.owner_id ? avatarMap.get(r.owner_id) : undefined,
       date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
       url: `/blog-post/${r.id}`,
       is_public: r.is_public,
@@ -143,7 +177,7 @@ export default function BlogListPage() {
         isModerator={userRoleId === 3}
       />
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg w-full">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Ajouter une ressource</DialogTitle>
           </DialogHeader>
