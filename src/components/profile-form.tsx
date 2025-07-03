@@ -24,6 +24,39 @@ interface ProfileFormProps {
   onProfileUpdate?: () => void;
 }
 
+// Fonction utilitaire pour convertir une image en WebP
+const convertImageToWebP = (file: File, quality = 0.85): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error("Impossible d'obtenir le contexte du canvas"));
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error("La conversion en WebP a échoué"));
+            const webpFile = new File([blob], file.name.replace(/\.[a-zA-Z0-9]+$/, ".webp"), { type: "image/webp" });
+            resolve(webpFile);
+          },
+          "image/webp",
+          quality
+        );
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -160,7 +193,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB max
@@ -171,7 +204,16 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
         });
         return;
       }
-      handleAvatarUpload(file);
+      try {
+        const webpFile = await convertImageToWebP(file, 0.85); // Qualité 85%
+        handleAvatarUpload(webpFile);
+      } catch {
+        toast({
+          title: "Erreur de conversion",
+          description: "Impossible de convertir l'image en WebP.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -189,7 +231,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="relative">
               <Avatar className="w-24 h-24">
                 <AvatarImage src={avatarUrl || undefined} alt="Photo de profil" />
@@ -203,13 +245,14 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById('avatar-upload')?.click()}
                   disabled={uploading}
+                  className="w-full sm:w-auto"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   {avatarUrl ? 'Modifier' : 'Ajouter'}
@@ -220,6 +263,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
                     size="sm"
                     onClick={handleAvatarDelete}
                     disabled={uploading}
+                    className="w-full sm:w-auto"
                   >
                     <X className="w-4 h-4 mr-2" />
                     Supprimer
@@ -296,7 +340,7 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
       </Card>
 
       {/* Section Suppression de compte */}
-      <Card className="border-destructive">
+      <Card className="border-destructive mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="w-5 h-5" />
@@ -314,9 +358,9 @@ export default function ProfileForm({ user, onProfileUpdate }: ProfileFormProps)
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={loading}>
+                <Button variant="destructive" disabled={loading} className="w-full whitespace-normal break-words">
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer mon compte
+                  <span className="block sm:inline">Supprimer mon compte</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

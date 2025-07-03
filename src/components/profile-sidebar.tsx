@@ -4,12 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-const FILTERS = [
-	{ key: "history", label: "Historique", icon: LucideEye },
-	{ key: "readlater", label: "À regarder plus tard", icon: LucideBookmark },
-	{ key: "liked", label: "Likés", icon: LucideHeart },
-];
-
 function formatDate(dateString: string) {
 	if (!dateString) return "";
 	const date = new Date(dateString);
@@ -23,15 +17,21 @@ function formatDate(dateString: string) {
 }
 
 interface ProfileSidebarProps {
-	filter: string;
-	setFilter: (filter: string) => void;
 	posts: { id: string; url: string; category: string; date: string; title: string; summary: string; author: string }[];
 	loading: boolean;
-	user: any;
+	user: {
+		user_metadata?: {
+			firstname?: string;
+			lastname?: string;
+			avatar_url?: string;
+		};
+		email?: string;
+		created_at?: string;
+	};
 	stats: { viewed: number; saved: number; liked: number };
 }
 
-export default function ProfileSidebar({ filter, setFilter, posts, loading, user, stats }: ProfileSidebarProps) {
+export default function ProfileSidebar({ posts, loading, user, stats }: ProfileSidebarProps) {
 	if (!user) return null;
 
 	const userFirstName = user.user_metadata?.firstname || "";
@@ -103,7 +103,7 @@ export default function ProfileSidebar({ filter, setFilter, posts, loading, user
 			</Card>
 
 			{/* Navigation rapide */}
-			<Card>
+			<Card className="hidden sm:block">
 				<CardHeader>
 					<CardTitle className="text-base">Navigation rapide</CardTitle>
 				</CardHeader>
@@ -126,7 +126,7 @@ export default function ProfileSidebar({ filter, setFilter, posts, loading, user
 			</Card>
 
 			{/* Dernières activités */}
-			<Card>
+			<Card className="hidden sm:block">
 				<CardHeader>
 					<CardTitle className="text-base">Dernières activités</CardTitle>
 				</CardHeader>
