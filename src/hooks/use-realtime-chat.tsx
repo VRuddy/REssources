@@ -81,13 +81,6 @@ export function useRealtimeChat({ roomName, username, avatarUrl, userId, resourc
         onMessageChange([message], tempId)
       }
       
-      // Envoyer le message via le canal en temps réel
-      await channel.send({
-        type: 'broadcast',
-        event: EVENT_MESSAGE_TYPE,
-        payload: message,
-      })
-
       // Si on a les paramètres nécessaires, insérer en base de données
       if (userId && resourceId) {
         try {
@@ -108,6 +101,15 @@ export function useRealtimeChat({ roomName, username, avatarUrl, userId, resourc
           } else if (data) {
             // Mettre à jour l'ID temporaire avec l'ID réel de la base de données
             const updatedMessage = { ...message, id: data.id };
+            
+            // Envoyer le message mis à jour via le canal en temps réel
+            await channel.send({
+              type: 'broadcast',
+              event: EVENT_MESSAGE_TYPE,
+              payload: updatedMessage,
+            });
+            
+            // Notifier le composant parent avec l'ID mis à jour
             if (onMessageChange) {
               onMessageChange([updatedMessage], tempId) // Notifier avec l'ID mis à jour et l'ID temporaire
             }
@@ -119,6 +121,13 @@ export function useRealtimeChat({ roomName, username, avatarUrl, userId, resourc
             onMessageChange([], tempId) // Signal pour retirer le message avec cet ID temporaire
           }
         }
+      } else {
+        // Si on n'a pas les paramètres pour l'insertion en base, envoyer directement
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_MESSAGE_TYPE,
+          payload: message,
+        });
       }
     },
     [channel, isConnected, username, avatarUrl, userId, resourceId, supabase, onMessageChange]
