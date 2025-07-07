@@ -9,7 +9,6 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import Image from "next/image";
 
 export interface Post {
   id: string;
@@ -97,39 +96,33 @@ const Blog7 = ({
           {posts.map((post) => (
             <Card
               key={post.id}
-              className="grid grid-rows-[auto_auto_1fr_auto] pt-0"
+              className="group hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary/20 hover:border-l-primary"
             >
-              <div className="aspect-16/9 w-full">
-                <Link
-                  href={post.url}
-                  className="transition-opacity duration-200 fade-in hover:opacity-70"
-                >
-                  <Image
-                  width={600}
-                  height={400}
-                    src={post.image}
-                    alt={post.title}
-                    className="h-full w-full object-cover object-center"
-                  />
-                </Link>
-              </div>
-              <CardHeader>
-                <h3 className="text-lg font-semibold hover:underline md:text-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="text-xs">
+                    {post.label}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {post.published}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold group-hover:text-primary transition-colors md:text-xl">
                   <Link href={post.url}>
                     {post.title}
                   </Link>
                 </h3>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{post.summary}</p>
+              <CardContent className="pt-0">
+                <p className="text-muted-foreground leading-relaxed">{post.summary}</p>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="pt-4">
                 <Link
                   href={post.url}
-                  className="flex items-center text-foreground hover:underline"
+                  className="flex items-center text-foreground hover:text-primary transition-colors group/link"
                 >
-                  Read more
-                  <ArrowRight className="ml-2 size-4" />
+                  Lire la suite
+                  <ArrowRight className="ml-2 size-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
               </CardFooter>
             </Card>

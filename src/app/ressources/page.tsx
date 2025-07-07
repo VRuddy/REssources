@@ -78,10 +78,26 @@ function BlogListPageContent() {
     setCategories(catData?.map((c) => c.name) || []);
     setCategoriesList(catData || []);
     // Récupère les ressources avec leur catégorie, le display_name du créateur, is_public et is_verified
-    const query = supabase
+    let query = supabase
       .from("resources")
       .select("id, title, content, created_at, owner_id, category_id, is_public, is_verified, categories(name), users(firstname, lastname)")
       .order("created_at", { ascending: false });
+
+    // Filtrage des ressources privées selon les permissions
+    if (user?.id) {
+      // Si l'utilisateur est connecté, on récupère les ressources publiques + ses propres ressources privées
+      // + les ressources privées s'il est modérateur, admin ou super-admin
+      if (roleId === 3 || roleId === 4 || roleId === 5) { // modérateur, admin, super-admin
+        // Les modérateurs, admins et super-admins voient toutes les ressources
+        // Pas de filtre supplémentaire nécessaire
+      } else {
+        // Utilisateur normal : seulement les ressources publiques + ses propres ressources privées
+        query = query.or(`is_public.eq.true,owner_id.eq.${user.id}`);
+      }
+    } else {
+      // Utilisateur non connecté : seulement les ressources publiques
+      query = query.eq("is_public", true);
+    }
 
     const { data: resources } = await query;
     
