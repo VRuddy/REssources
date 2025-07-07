@@ -6,6 +6,16 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function Page() {
   const [posts, setPosts] = useState<Blog7Props>();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      setIsAuthenticated(!!data.user);
+    };
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -29,7 +39,7 @@ export default function Page() {
           label: r.categories?.name || "Ressource",
           author: r.categories?.name || "Ressource",
           published: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
-          url: `/blog-post/${r.id}`,
+          url: `/ressource/${r.id}`,
           image: "/vercel.svg",
         })),
       };
@@ -45,6 +55,7 @@ export default function Page() {
         heading="Trouvez et partagez des ressources pour mieux vivre ensemble"
         imageSrc="/logo-resource.png"
         imageAlt="Ressources citoyennes"
+        showAuthButtons={!isAuthenticated}
         features={[
           {
             icon: <span>🌱</span>,

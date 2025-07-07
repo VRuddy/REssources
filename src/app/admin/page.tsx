@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/supabase";
 import {
@@ -118,6 +118,9 @@ type DashboardStats = {
   newResourcesThisMonth: number;
 };
 
+// Ajout du type pour les filtres de durée
+type DurationFilter = '24h' | '7d' | '30d' | '3m' | '6m' | '1y' | 'all';
+
 const chartConfig = {
   views: {
     label: "Vues",
@@ -141,17 +144,65 @@ const chartConfig = {
   },
 };
 
-// Fonction pour générer des couleurs dynamiques pour les catégories
-const generateCategoryColors = (categoriesCount: number) => {
+// Fonction pour générer des couleurs modernes et neutres pour les catégories
+const generateCategoryColors = (count: number): string[] => {
+  // Palette moderne et neutre
+  const modernColors = [
+    "#64748b", // Slate-500 - Gris neutre
+    "#3b82f6", // Blue-500 - Bleu moderne
+    "#10b981", // Emerald-500 - Vert moderne
+    "#8b5cf6", // Violet-500 - Violet subtil
+    "#f59e0b", // Amber-500 - Orange doux
+    "#ef4444", // Red-500 - Rouge moderne
+    "#06b6d4", // Cyan-500 - Cyan moderne
+    "#84cc16", // Lime-500 - Vert lime
+    "#f97316", // Orange-500 - Orange moderne
+    "#ec4899", // Pink-500 - Rose moderne
+    "#6366f1", // Indigo-500 - Indigo moderne
+    "#14b8a6", // Teal-500 - Teal moderne
+    "#f43f5e", // Rose-500 - Rose vif
+    "#a855f7", // Purple-500 - Purple moderne
+    "#22c55e", // Green-500 - Vert vif
+    "#eab308", // Yellow-500 - Jaune moderne
+    "#78716c", // Stone-500 - Gris pierre
+    "#6b7280", // Gray-500 - Gris standard
+    "#059669", // Emerald-600 - Vert foncé
+    "#1d4ed8", // Blue-600 - Bleu foncé
+  ];
+
+  // Si on a plus de catégories que de couleurs, on répète avec des variations
   const colors = [];
-  for (let i = 0; i < categoriesCount; i++) {
-    // Générer des couleurs HSL avec des teintes différentes
-    const hue = (i * 360) / categoriesCount;
-    const saturation = 70;
-    const lightness = 50;
-    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+  for (let i = 0; i < count; i++) {
+    const baseColor = modernColors[i % modernColors.length];
+    
+    // Pour les couleurs répétées, on ajuste légèrement la luminosité
+    const repeatCount = Math.floor(i / modernColors.length);
+    if (repeatCount > 0) {
+      // Ajuster la luminosité pour créer des variations
+      const adjustedColor = adjustColorBrightness(baseColor, repeatCount * 0.1);
+      colors.push(adjustedColor);
+    } else {
+      colors.push(baseColor);
+    }
   }
+
   return colors;
+};
+
+// Fonction pour ajuster la luminosité d'une couleur
+const adjustColorBrightness = (hex: string, factor: number): string => {
+  // Convertir hex en RGB
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+
+  // Ajuster la luminosité
+  const newR = Math.max(0, Math.min(255, Math.round(r + (255 - r) * factor)));
+  const newG = Math.max(0, Math.min(255, Math.round(g + (255 - g) * factor)));
+  const newB = Math.max(0, Math.min(255, Math.round(b + (255 - b) * factor)));
+
+  // Convertir en hex
+  return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
 };
 
 export default function AdminDashboard() {
@@ -189,6 +240,12 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<string>("");
+
+  // Nouvel état pour le filtre de durée
+  const [durationFilter, setDurationFilter] = useState<DurationFilter>('30d');
+  
+  // État pour le chargement des filtres
+  const [filterLoading, setFilterLoading] = useState(false);
 
   // Fonction pour recharger les utilisateurs fusionnés
   const fetchMergedUsers = async () => {
@@ -249,12 +306,147 @@ export default function AdminDashboard() {
     fetchMergedUsers();
   }, []);
 
+  // Fonction pour calculer la date de début selon le filtre
+  const getStartDate = (filter: DurationFilter): Date | null => {
+    const now = new Date();
+    switch (filter) {
+      case '24h':
+        return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      case '7d':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case '30d':
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case '3m':
+        return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      case '6m':
+        return new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      case '1y':
+        return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      case 'all':
+        return null;
+      default:
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+  };
+
+  // Fonction pour obtenir le label du filtre
+  const getDurationLabel = (filter: DurationFilter): string => {
+    switch (filter) {
+      case '24h': return '24h';
+      case '7d': return '7 jours';
+      case '30d': return '30 jours';
+      case '3m': return '3 mois';
+      case '6m': return '6 mois';
+      case '1y': return '1 an';
+      case 'all': return 'Tout';
+      default: return '30 jours';
+    }
+  };
+
+  // Fonction pour obtenir le nombre de points de données selon le filtre
+  const getDataPoints = (filter: DurationFilter): number => {
+    switch (filter) {
+      case '24h': return 24; // 24 heures
+      case '7d': return 7; // 7 jours
+      case '30d': return 30; // 30 jours
+      case '3m': return 12; // 12 semaines
+      case '6m': return 6; // 6 mois
+      case '1y': return 12; // 12 mois
+      case 'all': return 7; // Par défaut 7 jours pour "tout"
+      default: return 7;
+    }
+  };
+
+
+
+  // Fonction pour calculer les données temporelles selon le filtre
+  const calculateTimeData = (filter: DurationFilter) => {
+    const dataPoints = getDataPoints(filter);
+    const data = [];
+    
+    for (let i = dataPoints - 1; i >= 0; i--) {
+      const date = new Date();
+      
+      switch (filter) {
+        case '24h':
+          date.setHours(date.getHours() - i);
+          break;
+        case '7d':
+          date.setDate(date.getDate() - i);
+          break;
+        case '30d':
+          date.setDate(date.getDate() - i);
+          break;
+        case '3m':
+          date.setDate(date.getDate() - (i * 7)); // Par semaine
+          break;
+        case '6m':
+          date.setMonth(date.getMonth() - i);
+          break;
+        case '1y':
+          date.setMonth(date.getMonth() - i);
+          break;
+        case 'all':
+          date.setDate(date.getDate() - i);
+          break;
+        default:
+          date.setDate(date.getDate() - i);
+      }
+      
+      const startOfPeriod = new Date(date);
+      const endOfPeriod = new Date(date);
+      
+      // Ajuster les bornes selon le filtre
+      switch (filter) {
+        case '24h':
+          startOfPeriod.setMinutes(0, 0, 0);
+          endOfPeriod.setMinutes(59, 59, 999);
+          break;
+        case '7d':
+        case '30d':
+        case 'all':
+          startOfPeriod.setHours(0, 0, 0, 0);
+          endOfPeriod.setHours(23, 59, 59, 999);
+          break;
+        case '3m':
+          startOfPeriod.setHours(0, 0, 0, 0);
+          endOfPeriod.setHours(23, 59, 59, 999);
+          break;
+        case '6m':
+        case '1y':
+          startOfPeriod.setDate(1);
+          startOfPeriod.setHours(0, 0, 0, 0);
+          endOfPeriod.setMonth(endOfPeriod.getMonth() + 1);
+          endOfPeriod.setDate(0);
+          endOfPeriod.setHours(23, 59, 59, 999);
+          break;
+      }
+      
+      data.push({
+        date: startOfPeriod,
+        startOfPeriod,
+        endOfPeriod,
+        label: startOfPeriod.toLocaleDateString("fr-FR", {
+          weekday: filter === '24h' ? undefined : 'short',
+          day: filter === '24h' ? undefined : 'numeric',
+          month: filter === '6m' || filter === '1y' ? 'short' : undefined,
+          year: filter === '1y' ? 'numeric' : undefined,
+          hour: filter === '24h' ? '2-digit' : undefined,
+          minute: filter === '24h' ? '2-digit' : undefined,
+        }).replace(',', ''),
+      });
+    }
+    
+    return data;
+  };
+
+  // Fonction pour charger les données de base (une seule fois)
   const loadDashboardData = async () => {
     const supabase = createClient();
     setLoading(true);
 
     try {
-      // Charger les statistiques
+      // Charger les données de base (sans filtre de durée)
       const [
         { count: totalUsers },
         { count: totalResources },
@@ -269,17 +461,11 @@ export default function AdminDashboard() {
         supabase.from("views").select("*", { count: "exact", head: true }),
         supabase.from("likes").select("*", { count: "exact", head: true }),
         supabase.from("comments").select("*", { count: "exact", head: true }),
-        supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("is_verified", true),
-        supabase
-          .from("resources")
-          .select("*", { count: "exact", head: true })
-          .eq("is_public", true),
+        supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_verified", true),
+        supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_public", true),
       ]);
 
-      // Statistiques ce mois
+      // Statistiques ce mois (toujours calculées sur le mois en cours)
       const thisMonth = new Date();
       thisMonth.setDate(1);
       thisMonth.setHours(0, 0, 0, 0);
@@ -308,7 +494,7 @@ export default function AdminDashboard() {
         newResourcesThisMonth: newResourcesThisMonth || 0,
       });
 
-      // Charger les ressources avec leurs statistiques
+      // Charger les ressources avec leurs statistiques (sans filtre de durée)
       const { data: resourcesData } = await supabase
         .from("resources")
         .select(`
@@ -320,7 +506,7 @@ export default function AdminDashboard() {
         .limit(50);
 
       if (resourcesData) {
-        // Ajouter les comptes pour chaque ressource
+        // Ajouter les comptes pour chaque ressource (sans filtre de durée)
         const resourcesWithCounts = await Promise.all(
           resourcesData.map(async (resource) => {
             const [
@@ -356,7 +542,7 @@ export default function AdminDashboard() {
         setResources(resourcesWithCounts);
       }
 
-      // Charger les utilisateurs
+      // Charger les utilisateurs (sans filtre de durée)
       const { data: usersData } = await supabase
         .from("users")
         .select(`
@@ -398,7 +584,6 @@ export default function AdminDashboard() {
             };
           })
         );
-
       }
 
       // Charger les catégories
@@ -414,7 +599,7 @@ export default function AdminDashboard() {
         const colors = generateCategoryColors(categoriesData.length);
         setCategoryColors(colors);
 
-        // Données pour le graphique par catégorie
+        // Données pour le graphique par catégorie (sans filtre de durée)
         const categoryStats = await Promise.all(
           categoriesData.map(async (category) => {
             const { count } = await supabase
@@ -432,62 +617,210 @@ export default function AdminDashboard() {
         setCategoryData(categoryStats);
       }
 
-      // Données journalières pour les 7 derniers jours
-      const dailyStats = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const startOfDay = new Date(
-          date.getFullYear(),
-          date.getMonth(),
-          date.getDate()
-        );
-        const endOfDay = new Date(
-          date.getFullYear(),
-          date.getMonth(),
-          date.getDate() + 1
-        );
+      // Charger les données temporelles avec le filtre par défaut
+      await updateFilteredData(durationFilter);
 
-        const [
-          { count: dailyResources },
-          { count: dailyUsers },
-          { count: dailyViews },
-        ] = await Promise.all([
-          supabase
-            .from("resources")
-            .select("*", { count: "exact", head: true })
-            .gte("created_at", startOfDay.toISOString())
-            .lt("created_at", endOfDay.toISOString()),
-          supabase
-            .from("users")
-            .select("*", { count: "exact", head: true })
-            .gte("created_at", startOfDay.toISOString())
-            .lt("created_at", endOfDay.toISOString()),
-          supabase
-            .from("views")
-            .select("*", { count: "exact", head: true })
-            .gte("viewed_at", startOfDay.toISOString())
-            .lt("viewed_at", endOfDay.toISOString()),
-        ]);
-
-        dailyStats.push({
-          day: date.toLocaleDateString("fr-FR", {
-            weekday: "short",
-            day: "numeric",
-          }),
-          resources: dailyResources || 0,
-          users: dailyUsers || 0,
-          views: dailyViews || 0,
-        });
-      }
-
-      setDailyData(dailyStats);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Fonction pour mettre à jour uniquement les données filtrées
+  const updateFilteredData = async (filter: DurationFilter) => {
+    setFilterLoading(true);
+    const supabase = createClient();
+    
+    try {
+      const startDate = getStartDate(filter);
+      const startDateISO = startDate ? startDate.toISOString() : null;
+
+      // Mettre à jour les statistiques avec filtre de durée
+      const [
+        { count: totalUsers },
+        { count: totalResources },
+        { count: totalViews },
+        { count: totalLikes },
+        { count: totalComments },
+        { count: verifiedResources },
+        { count: publicResources },
+      ] = await Promise.all([
+        startDateISO 
+          ? supabase.from("users").select("*", { count: "exact", head: true }).gte("created_at", startDateISO)
+          : supabase.from("users").select("*", { count: "exact", head: true }),
+        startDateISO 
+          ? supabase.from("resources").select("*", { count: "exact", head: true }).gte("created_at", startDateISO)
+          : supabase.from("resources").select("*", { count: "exact", head: true }),
+        startDateISO 
+          ? supabase.from("views").select("*", { count: "exact", head: true }).gte("viewed_at", startDateISO)
+          : supabase.from("views").select("*", { count: "exact", head: true }),
+        startDateISO 
+          ? supabase.from("likes").select("*", { count: "exact", head: true }).gte("created_at", startDateISO)
+          : supabase.from("likes").select("*", { count: "exact", head: true }),
+        startDateISO 
+          ? supabase.from("comments").select("*", { count: "exact", head: true }).gte("created_at", startDateISO)
+          : supabase.from("comments").select("*", { count: "exact", head: true }),
+        startDateISO 
+          ? supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_verified", true).gte("created_at", startDateISO)
+          : supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_verified", true),
+        startDateISO 
+          ? supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_public", true).gte("created_at", startDateISO)
+          : supabase.from("resources").select("*", { count: "exact", head: true }).eq("is_public", true),
+      ]);
+
+      // Mettre à jour les stats avec les données filtrées
+      setStats(prev => prev ? {
+        ...prev,
+        totalUsers: totalUsers || 0,
+        totalResources: totalResources || 0,
+        totalViews: totalViews || 0,
+        totalLikes: totalLikes || 0,
+        totalComments: totalComments || 0,
+        verifiedResources: verifiedResources || 0,
+        publicResources: publicResources || 0,
+      } : null);
+
+      // Mettre à jour les ressources avec statistiques filtrées
+      const resourcesQuery = supabase
+        .from("resources")
+        .select(`
+          *,
+          categories(name),
+          users(firstname, lastname)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (startDateISO) {
+        resourcesQuery.gte("created_at", startDateISO);
+      }
+
+      const { data: resourcesData } = await resourcesQuery;
+
+      if (resourcesData) {
+        const resourcesWithCounts = await Promise.all(
+          resourcesData.map(async (resource) => {
+            const viewsQuery = supabase
+              .from("views")
+              .select("*", { count: "exact", head: true })
+              .eq("resource_id", resource.id);
+            
+            const likesQuery = supabase
+              .from("likes")
+              .select("*", { count: "exact", head: true })
+              .eq("resource_id", resource.id);
+            
+            const commentsQuery = supabase
+              .from("comments")
+              .select("*", { count: "exact", head: true })
+              .eq("resource_id", resource.id);
+
+            if (startDateISO) {
+              viewsQuery.gte("viewed_at", startDateISO);
+              likesQuery.gte("created_at", startDateISO);
+              commentsQuery.gte("created_at", startDateISO);
+            }
+
+            const [
+              { count: viewsCount },
+              { count: likesCount },
+              { count: commentsCount },
+            ] = await Promise.all([
+              viewsQuery,
+              likesQuery,
+              commentsQuery,
+            ]);
+
+            return {
+              ...resource,
+              _count: {
+                views: viewsCount || 0,
+                likes: likesCount || 0,
+                comments: commentsCount || 0,
+              },
+            };
+          })
+        );
+
+        setResources(resourcesWithCounts);
+      }
+
+      // Mettre à jour les données des catégories avec filtre
+      if (categories.length > 0) {
+        const categoryStats = await Promise.all(
+          categories.map(async (category) => {
+            const categoryQuery = supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .eq("category_id", category.id);
+
+            if (startDateISO) {
+              categoryQuery.gte("created_at", startDateISO);
+            }
+
+            const { count } = await categoryQuery;
+
+            return {
+              name: category.name,
+              value: count || 0,
+            };
+          })
+        );
+
+        setCategoryData(categoryStats);
+      }
+
+      // Mettre à jour les données temporelles
+      const timeData = calculateTimeData(filter);
+      const timeStats = await Promise.all(
+        timeData.map(async (timePoint) => {
+          const [
+            { count: periodResources },
+            { count: periodUsers },
+            { count: periodViews },
+          ] = await Promise.all([
+            supabase
+              .from("resources")
+              .select("*", { count: "exact", head: true })
+              .gte("created_at", timePoint.startOfPeriod.toISOString())
+              .lt("created_at", timePoint.endOfPeriod.toISOString()),
+            supabase
+              .from("users")
+              .select("*", { count: "exact", head: true })
+              .gte("created_at", timePoint.startOfPeriod.toISOString())
+              .lt("created_at", timePoint.endOfPeriod.toISOString()),
+            supabase
+              .from("views")
+              .select("*", { count: "exact", head: true })
+              .gte("viewed_at", timePoint.startOfPeriod.toISOString())
+              .lt("viewed_at", timePoint.endOfPeriod.toISOString()),
+          ]);
+
+          return {
+            day: timePoint.label,
+            resources: periodResources || 0,
+            users: periodUsers || 0,
+            views: periodViews || 0,
+          };
+        })
+      );
+
+      setDailyData(timeStats);
+
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour des données filtrées:", error);
+    } finally {
+      setFilterLoading(false);
+    }
+  };
+
+  // Mettre à jour les données filtrées quand le filtre change
+  useEffect(() => {
+    if (!loading) {
+      updateFilteredData(durationFilter);
+    }
+  }, [durationFilter]);
 
   const handleToggleVerification = async (resourceId: number, currentStatus: boolean) => {
     const supabase = createClient();
@@ -1067,6 +1400,25 @@ export default function AdminDashboard() {
     toast.success('Export du rapport complet terminé !');
   };
 
+  // Filtrage des utilisateurs selon la période sélectionnée
+  const filteredAdminUsers = useMemo(() => {
+    if (!adminUsers) return [];
+    const startDate = getStartDate(durationFilter);
+    if (!startDate) return adminUsers;
+    return adminUsers.filter(user => new Date(user.created_at) >= startDate);
+  }, [adminUsers, durationFilter]);
+
+  // Filtrage des catégories selon la période sélectionnée (au moins une ressource dans la période)
+  const filteredCategories = useMemo(() => {
+    if (!categories) return [];
+    const startDate = getStartDate(durationFilter);
+    if (!startDate) return categories;
+    return categories.filter(cat => {
+      const catData = categoryData.find(c => c.name === cat.name);
+      return catData && catData.value > 0;
+    });
+  }, [categories, categoryData, durationFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1111,6 +1463,25 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          {/* Filtre de durée */}
+          <Select 
+            value={durationFilter} 
+            onValueChange={(value: DurationFilter) => setDurationFilter(value)}
+            disabled={filterLoading}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Durée" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24h">24h</SelectItem>
+              <SelectItem value="7d">7 jours</SelectItem>
+              <SelectItem value="30d">30 jours</SelectItem>
+              <SelectItem value="3m">3 mois</SelectItem>
+              <SelectItem value="6m">6 mois</SelectItem>
+              <SelectItem value="1y">1 an</SelectItem>
+              <SelectItem value="all">Tout</SelectItem>
+            </SelectContent>
+          </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -1140,7 +1511,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards avec indication de la période */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1150,7 +1521,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              +{stats?.newUsersThisMonth} ce mois
+              +{stats?.newUsersThisMonth} ce mois • {getDurationLabel(durationFilter)}
             </p>
           </CardContent>
         </Card>
@@ -1163,7 +1534,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalResources}</div>
             <p className="text-xs text-muted-foreground">
-              +{stats?.newResourcesThisMonth} ce mois
+              +{stats?.newResourcesThisMonth} ce mois • {getDurationLabel(durationFilter)}
             </p>
           </CardContent>
         </Card>
@@ -1175,9 +1546,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalViews}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.verifiedResources} ressources vérifiées
-            </p>
+            
           </CardContent>
         </Card>
 
@@ -1189,7 +1558,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalLikes}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.totalComments} commentaires
+              {stats?.totalComments} commentaires • {getDurationLabel(durationFilter)}
             </p>
           </CardContent>
         </Card>
@@ -1199,7 +1568,11 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Activité des 7 derniers jours</CardTitle>
+            <CardTitle>Activité • {getDurationLabel(durationFilter)}</CardTitle>
+            <CardDescription>
+              Données temporelles selon la période sélectionnée
+              {filterLoading && " • Mise à jour..."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
@@ -1246,62 +1619,72 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle>Répartition par catégorie</CardTitle>
             <CardDescription>
-              Distribution des ressources par catégorie
+              Distribution des ressources par catégorie • {getDurationLabel(durationFilter)}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
-              <PieChart width={533} height={300}>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => 
-                    `${name} (${(percent * 100).toFixed(0)}%)`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={categoryColors[index % categoryColors.length]} 
-                    />
-                  ))}
-                </Pie>
-                <ChartTooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Catégorie
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                {payload[0].payload.name}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Ressources
-                              </span>
-                              <span className="font-bold">
-                                {payload[0].value}
-                              </span>
+            {categoryData.filter(cat => cat.value > 0).length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <PieChart width={533} height={300}>
+                  <Pie
+                    data={categoryData.filter(cat => cat.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => 
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryData.filter(cat => cat.value > 0).map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={categoryColors[index % categoryColors.length]} 
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  Catégorie
+                                </span>
+                                <span className="font-bold text-muted-foreground">
+                                  {payload[0].payload.name}
+                                </span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  Ressources
+                                </span>
+                                <span className="font-bold">
+                                  {payload[0].value}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </PieChart>
-            </ChartContainer>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">Aucune ressource dans cette période</p>
+                  <p className="text-xs">Les catégories apparaîtront quand des ressources seront créées</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1322,7 +1705,7 @@ export default function AdminDashboard() {
                 <div>
                   <CardTitle>Ressources ({filteredResources.length})</CardTitle>
                   <CardDescription>
-                    Gérez les ressources de la plateforme
+                    Gérez les ressources de la plateforme • {getDurationLabel(durationFilter)}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -1512,9 +1895,9 @@ export default function AdminDashboard() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Utilisateurs ({adminUsers.length})</CardTitle>
+                  <CardTitle>Utilisateurs ({filteredAdminUsers.length})</CardTitle>
                   <CardDescription>
-                    Gérez les utilisateurs de la plateforme
+                    Gérez les utilisateurs de la plateforme • {getDurationLabel(durationFilter)}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -1559,7 +1942,7 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {adminUsers.map((user) => (
+                  {filteredAdminUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.firstname}
@@ -1680,9 +2063,9 @@ export default function AdminDashboard() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Catégories ({categories.length})</CardTitle>
+                  <CardTitle>Catégories ({filteredCategories.length})</CardTitle>
                   <CardDescription>
-                    Gérez les catégories de ressources
+                    Gérez les catégories de ressources • {getDurationLabel(durationFilter)}
                   </CardDescription>
                 </div>
                 <Button onClick={openCreateDialog}>
@@ -1702,7 +2085,7 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {categories.map((category) => (
+                  {filteredCategories.map((category) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">
                         {category.name}

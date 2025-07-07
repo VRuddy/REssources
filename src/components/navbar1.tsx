@@ -66,7 +66,7 @@ export default function Navbar1({
   },
   menu = [
     { title: "Accueil", url: "/" },
-    { title: "Blog", url: "/blog-list" },
+    { title: "Ressources", url: "/ressources" },
   ],
   auth = {
     login: { title: "Connexion", url: "/auth/login" },
@@ -125,7 +125,7 @@ export default function Navbar1({
         <nav className="hidden justify-between lg:flex">
           <div className="flex items-center gap-6">
             {/* Logo */}
-            <Link href={isAuthenticated ? "/blog-list" : logo.url} className="flex items-center gap-2">
+            <Link href={isAuthenticated ? "/ressources" : logo.url} className="flex items-center gap-2">
               <Image src={logo.src} width={32} height={32} alt={logo.alt} />
               <span className="text-lg font-semibold tracking-tighter">
                 {logo.title}
@@ -172,7 +172,7 @@ export default function Navbar1({
         <div className="block lg:hidden">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link href={isAuthenticated ? "/blog-list" : logo.url} className="flex items-center gap-2">
+            <Link href={isAuthenticated ? "/ressources" : logo.url} className="flex items-center gap-2">
               <Image src={logo.src} width={32} height={32} alt={logo.alt} />
             </Link>
             <Sheet open={open} onOpenChange={setOpen}>
@@ -185,7 +185,7 @@ export default function Navbar1({
                 <SheetHeader>
                   <SheetTitle>
                     <Link
-                      href={isAuthenticated ? "/blog-list" : logo.url}
+                      href={isAuthenticated ? "/ressources" : logo.url}
                       className="flex items-center gap-2"
                       onClick={() => setOpen(false)}
                     >

@@ -19,6 +19,7 @@ interface Hero45Props {
   imageSrc?: string;
   imageAlt?: string;
   features?: Feature[];
+  showAuthButtons?: boolean;
 }
 
 const Hero45 = ({
@@ -46,6 +47,7 @@ const Hero45 = ({
         "Experience the fastest load times with our high performance servers.",
     },
   ],
+  showAuthButtons = true,
 }: Hero45Props) => {
   return (
     <section className="py-32 flex flex-col items-center w-full">
@@ -53,14 +55,16 @@ const Hero45 = ({
         <div className="mb-20 flex flex-col items-center gap-6 text-center">
           <Badge variant="outline">{badge}</Badge>
           <h1 className="text-4xl font-semibold lg:text-5xl">{heading}</h1>
-          <div className="flex gap-4 mt-6">
-            <Button asChild>
-              <Link href="/auth/login">Se connecter</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/auth/sign-up">S&apos;inscrire</Link>
-            </Button>
-          </div>
+          {showAuthButtons && (
+            <div className="flex gap-4 mt-6">
+              <Button asChild>
+                <Link href="/auth/login">Se connecter</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/auth/sign-up">S&apos;inscrire</Link>
+              </Button>
+            </div>
+          )}
         </div>
         <div className="relative mx-auto max-w-5xl">
           <Image

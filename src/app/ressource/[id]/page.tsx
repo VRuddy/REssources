@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BlogPost } from "@/components/blog-post/BlogPost";
+import { BlogPost } from "@/components/ressource/BlogPost";
 import { RealtimeChat } from "@/components/realtime-chat";
 import { getAuthUser } from "@/app/helper/get-user";
 
@@ -153,6 +153,10 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
         }}
         date={post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
         categories={post.categories?.name ? [post.categories.name] : []}
+        breadcrumbs={[
+          { label: "Ressources", href: "/ressources" },
+          ...(post.categories?.name ? [{ label: post.categories.name, href: `/ressources?category=${encodeURIComponent(post.categories.name)}` }] : []),
+        ]}
         liked={liked}
         userId={user?.id || null}
         resourceId={post.id}

@@ -37,7 +37,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       })
       if (error) throw error
       // Modifiez cette route pour rediriger vers une page authentifiée. L'utilisateur a déjà une session active.
-      router.push('/blog-list')
+      router.push('/ressources')
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
       setError(translateAuthError(errorMessage))

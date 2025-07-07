@@ -234,7 +234,7 @@ export default function ProfilePage() {
 								  (data as SupabaseRow[])[index]?.saved_at || 
 								  (data as SupabaseRow[])[index]?.created_at || 
 								  r.created_at || "",
-							url: `/blog-post/${r.id}`,
+							url: `/ressource/${r.id}`,
 						};
 					}) as ProfilePost[];
 				setPosts(posts);

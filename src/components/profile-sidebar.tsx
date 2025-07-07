@@ -116,7 +116,7 @@ export default function ProfileSidebar({ posts, loading, user, stats }: ProfileS
 						Mon profil
 					</Link>
 					<Link 
-						href="/blog-list" 
+						href="/ressources" 
 						className="flex items-center gap-2 p-2 rounded-md hover:bg-muted transition-colors text-sm"
 					>
 						<LucideEye className="w-4 h-4" />

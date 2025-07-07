@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
-import { BlogList, BlogPost } from "@/components/blog-list/BlogList";
+import { BlogList, BlogPost } from "@/components/ressources/BlogList";
 import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
+import { AddOrEditResourceForm } from "@/components/ressources/AddOrEditResourceForm";
 import { useSearchParams } from "next/navigation";
 
 // Fonction pour récupérer les avatars des auteurs côté client
@@ -98,7 +98,7 @@ function BlogListPageContent() {
       author: r.users?.firstname || "Anonyme",
       authorAvatarUrl: r.owner_id ? avatarMap.get(r.owner_id) : undefined,
       date: r.created_at ? new Date(r.created_at).toLocaleDateString() : "",
-      url: `/blog-post/${r.id}`,
+      url: `/ressource/${r.id}`,
       is_public: r.is_public,
       is_verified: r.is_verified,
     }));
@@ -151,6 +151,14 @@ function BlogListPageContent() {
       fetchResourceToEdit();
     }
   }, [searchParams, userId]);
+
+  // Vérifier le paramètre category dans l'URL
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [searchParams]);
 
   // Add or remove a post from read_later
   const toggleReadLater = async (postId: string) => {

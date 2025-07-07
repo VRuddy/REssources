@@ -131,10 +131,8 @@ export function BlogPost({
   content,
   author,
   date,
-  readTime = "10 min read",
   breadcrumbs = [
-    { label: "Resources", href: "#" },
-    { label: "Blogs", href: "#" },
+    { label: "Ressources", href: "/ressources" },
   ],
   chapters = [],
   socialLinks = [],
@@ -300,15 +298,13 @@ export function BlogPost({
                     <button
                       type="button"
                       className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                      onClick={() => window.location.href = `/blog-list?edit=${resourceId}`}
+                      onClick={() => window.location.href = `/ressources?edit=${resourceId}`}
                     >
                       <LucideEdit size={18} /> Modifier
                     </button>
                   )}
                 </div>
                 <div className="text-muted-2-foreground flex items-center justify-center gap-2.5 text-sm font-medium">
-                  <div>{readTime}</div>
-                  <div>|</div>
                   <div>{date}</div>
                 </div>
                 <h1 className="text-center text-[2.5rem] font-semibold leading-[1.2] md:text-5xl lg:text-6xl">{title}</h1>

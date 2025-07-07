@@ -32,7 +32,7 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
       // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push('/blog-list')
+      router.push('/ressources')
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
       setError(translateAuthError(errorMessage))

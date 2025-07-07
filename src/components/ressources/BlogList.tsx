@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LucideBookmark, LucideBookmarkCheck, LucideEye, LucideCheckCircle, LucideXCircle, LucidePlus } from "lucide-react";
 
 export interface BlogPost {
@@ -51,6 +51,25 @@ export function BlogList({
   showAddButton = false,
 }: BlogListProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleCategoryClick = (category: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (category) {
+      params.set('category', category);
+    } else {
+      params.delete('category');
+    }
+    
+    // Mettre à jour l'URL
+    router.push(`/ressources?${params.toString()}`);
+    
+    // Appeler la fonction de callback
+    if (onCategoryClick) {
+      onCategoryClick(category);
+    }
+  };
 
   return (
     <section className="py-32 flex flex-col items-center w-full">
@@ -76,7 +95,7 @@ export function BlogList({
             <Button
               variant={!selectedCategory ? "secondary" : "ghost"}
               className={!selectedCategory ? "justify-start text-left bg-secondary text-secondary-foreground hover:bg-secondary/80" : "justify-start text-left"}
-              onClick={() => onCategoryClick && onCategoryClick(null)}
+              onClick={() => handleCategoryClick(null)}
             >
               Toutes les catégories
             </Button>
@@ -85,7 +104,7 @@ export function BlogList({
                 key={cat}
                 variant={selectedCategory === cat ? "secondary" : "ghost"}
                 className={selectedCategory === cat ? "justify-start text-left bg-secondary text-secondary-foreground hover:bg-secondary/80" : "justify-start text-left"}
-                onClick={() => onCategoryClick && onCategoryClick(cat)}
+                onClick={() => handleCategoryClick(cat)}
               >
                 {cat}
               </Button>
@@ -108,7 +127,7 @@ export function BlogList({
               <Button
                 variant={!selectedCategory ? "secondary" : "ghost"}
                 className={!selectedCategory ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""}
-                onClick={() => onCategoryClick && onCategoryClick(null)}
+                onClick={() => handleCategoryClick(null)}
               >
                 Toutes les catégories
               </Button>
@@ -117,7 +136,7 @@ export function BlogList({
                   key={cat}
                   variant={selectedCategory === cat ? "secondary" : "ghost"}
                   className={selectedCategory === cat ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""}
-                  onClick={() => onCategoryClick && onCategoryClick(cat)}
+                  onClick={() => handleCategoryClick(cat)}
                 >
                   {cat}
                 </Button>
