@@ -75,17 +75,48 @@ export default function Navbar1({
 }: Navbar1Props) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [open, setOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setIsAuthenticated(!!data.user);
-    });
+    
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        setIsAuthenticated(true);
+        
+        // Récupérer le rôle de l'utilisateur
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role_id, roles(name)")
+          .eq("id", data.user.id)
+          .single();
+        
+        const roleName = userData?.roles?.name || null;
+        setUserRole(roleName);
+        setIsAdmin(roleName === "admin" || roleName === "super-admin");
+      } else {
+        setIsAuthenticated(false);
+        setUserRole(null);
+        setIsAdmin(false);
+      }
+    };
+
+    checkAuth();
+
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setIsAuthenticated(!!session?.user);
+        if (session?.user) {
+          checkAuth();
+        } else {
+          setIsAuthenticated(false);
+          setUserRole(null);
+          setIsAdmin(false);
+        }
       }
     );
+    
     return () => {
       listener?.subscription.unsubscribe();
     };
@@ -121,6 +152,11 @@ export default function Navbar1({
                 <Button asChild variant="outline" size="sm">
                   <Link href="/profile">Profil</Link>
                 </Button>
+                {isAdmin && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/admin">Admin</Link>
+                  </Button>
+                )}
                 <LogoutButton />
               </>
             ) : (
@@ -184,6 +220,16 @@ export default function Navbar1({
                             Profil
                           </Link>
                         </Button>
+                        {isAdmin && (
+                          <Button asChild variant="outline">
+                            <Link
+                              href="/admin"
+                              onClick={() => setOpen(false)}
+                            >
+                              Admin
+                            </Link>
+                          </Button>
+                        )}
                         <LogoutButton />
                       </>
                     ) : (
@@ -219,17 +265,13 @@ export default function Navbar1({
 
 const renderMenuItem = (item: MenuItem) => {
   if (item.items) {
-    function setOpen(open: boolean): void {
-      // This function updates the state to control the visibility of the mobile menu
-      setOpen(open);
-    }
     return (
       <NavigationMenuItem key={item.title}>
         <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
         <NavigationMenuContent className="bg-popover text-popover-foreground">
           {item.items.map((subItem) => (
             <NavigationMenuLink asChild key={subItem.title} className="w-80">
-              <SubMenuLink item={subItem} setOpen={setOpen} />
+              <SubMenuLink item={subItem} setOpen={() => {}} />
             </NavigationMenuLink>
           ))}
         </NavigationMenuContent>

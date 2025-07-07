@@ -3,6 +3,7 @@
 import webpush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { translateAuthError } from "@/lib/auth-errors";
 
 webpush.setVapidDetails(
   "mailto:your-email@example.com",
@@ -79,7 +80,8 @@ export async function signUp(formData: FormData) {
 	});
 
 	if (error) {
-		redirect("/auth/sign-up?error=Could not authenticate user");
+		const translatedError = encodeURIComponent(translateAuthError(error.message));
+		redirect(`/auth/sign-up?error=${translatedError}`);
 	}
 
 	redirect("/auth/sign-up-success");
@@ -100,7 +102,8 @@ export async function signIn(formData: FormData) {
 	});
 
 	if (error) {
-		redirect("/auth/login?error=Could not authenticate user");
+		const translatedError = encodeURIComponent(translateAuthError(error.message));
+		redirect(`/auth/login?error=${translatedError}`);
 	}
 
 	redirect("/protected");
@@ -125,10 +128,11 @@ export async function resetPassword(formData: FormData) {
 	});
 
 	if (error) {
-		redirect("/auth/forgot-password?error=Could not send reset email");
+		const translatedError = encodeURIComponent(translateAuthError(error.message));
+		redirect(`/auth/forgot-password?error=${translatedError}`);
 	}
 
-	redirect("/auth/forgot-password?message=Check your email for the reset link");
+	redirect("/auth/forgot-password?message=Vérifiez votre email pour le lien de réinitialisation");
 }
 
 export async function updatePassword(formData: FormData) {
@@ -144,10 +148,11 @@ export async function updatePassword(formData: FormData) {
 	});
 
 	if (error) {
-		redirect("/auth/update-password?error=Could not update password");
+		const translatedError = encodeURIComponent(translateAuthError(error.message));
+		redirect(`/auth/update-password?error=${translatedError}`);
 	}
 
-	redirect("/auth/update-password?message=Password updated successfully");
+	redirect("/auth/update-password?message=Mot de passe mis à jour avec succès");
 }
 
 // Actions pour la gestion du profil

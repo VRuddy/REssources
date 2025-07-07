@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -38,7 +39,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       // Modifiez cette route pour rediriger vers une page authentifiée. L'utilisateur a déjà une session active.
       router.push('/blog-list')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Une erreur est survenue')
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
+      setError(translateAuthError(errorMessage))
     } finally {
       setIsLoading(false)
     }

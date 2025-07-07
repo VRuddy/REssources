@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -53,7 +54,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error
       router.push('/auth/sign-up-success')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Une erreur est survenue')
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
+      setError(translateAuthError(errorMessage))
     } finally {
       setIsLoading(false)
     }

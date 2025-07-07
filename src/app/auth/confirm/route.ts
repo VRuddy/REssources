@@ -1,3 +1,4 @@
+import { translateAuthError } from '@/lib/auth-errors'
 import { createClient } from '@/lib/supabase/server'
 import { type EmailOtpType } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
@@ -21,10 +22,11 @@ export async function GET(request: NextRequest) {
       redirect(next)
     } else {
       // redirect the user to an error page with some instructions
-      redirect(`/auth/error?error=${error?.message}`)
+      const translatedError = encodeURIComponent(translateAuthError(error.message))
+      redirect(`/auth/error?error=${translatedError}`)
     }
   }
 
   // redirect the user to an error page with some instructions
-  redirect(`/auth/error?error=No token hash or type`)
+  redirect(`/auth/error?error=${encodeURIComponent('Token de vérification manquant ou invalide')}`)
 }

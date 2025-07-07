@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -33,7 +34,8 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
       // Update this route to redirect to an authenticated route. The user already has an active session.
       router.push('/blog-list')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
+      setError(translateAuthError(errorMessage))
     } finally {
       setIsLoading(false)
     }
@@ -43,18 +45,18 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>Please enter your new password below.</CardDescription>
+          <CardTitle className="text-2xl">Réinitialisez votre mot de passe</CardTitle>
+          <CardDescription>Veuillez saisir votre nouveau mot de passe ci-dessous.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleForgotPassword}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="password">New password</Label>
+                <Label htmlFor="password">Nouveau mot de passe</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="New password"
+                  placeholder="Nouveau mot de passe"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -62,7 +64,7 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Saving...' : 'Save new password'}
+                {isLoading ? 'Sauvegarde...' : 'Sauvegarder le nouveau mot de passe'}
               </Button>
             </div>
           </form>
