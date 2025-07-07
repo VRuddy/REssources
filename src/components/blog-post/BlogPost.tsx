@@ -312,7 +312,10 @@ export function BlogPost({
                   <div>{date}</div>
                 </div>
                 <h1 className="text-center text-[2.5rem] font-semibold leading-[1.2] md:text-5xl lg:text-6xl">{title}</h1>
-                <p className="text-foreground text-center text-xl font-semibold leading-[1.4]">{summary}</p>
+                <div 
+                  className="text-foreground text-center text-xl font-semibold leading-[1.4] prose prose-lg max-w-none"
+                  dangerouslySetInnerHTML={{ __html: summary }}
+                />
                 {socialLinksElements}
               </div>
             </div>

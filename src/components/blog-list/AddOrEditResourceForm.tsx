@@ -222,6 +222,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Boutons de formatage de base */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant={editor.isActive('bold') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -232,6 +233,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('italic') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -242,6 +244,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('strike') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleStrike().run()}
@@ -252,6 +255,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('underline') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
@@ -266,6 +270,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Titres */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant={editor.isActive('heading', { level: 1 }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -275,6 +280,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('heading', { level: 2 }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
@@ -284,6 +290,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('heading', { level: 3 }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -298,6 +305,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Listes */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant={editor.isActive('bulletList') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -307,6 +315,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('orderedList') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -321,6 +330,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Citation et code */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant={editor.isActive('blockquote') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
@@ -330,6 +340,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive('codeBlock') ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -344,6 +355,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Alignement du texte */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant={editor.isActive({ textAlign: 'left' }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().setTextAlign('left').run()}
@@ -353,6 +365,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive({ textAlign: 'center' }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().setTextAlign('center').run()}
@@ -362,6 +375,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive({ textAlign: 'right' }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().setTextAlign('right').run()}
@@ -371,6 +385,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant={editor.isActive({ textAlign: 'justify' }) ? 'default' : 'ghost'}
             size="sm"
             onClick={() => editor.chain().focus().setTextAlign('justify').run()}
@@ -385,6 +400,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Tableau et Image */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
@@ -394,6 +410,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
 
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => document.getElementById('image-upload')?.click()}
@@ -421,6 +438,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         {/* Annuler/Rétablir */}
         <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => editor.chain().focus().undo().run()}
@@ -431,6 +449,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
           </Button>
           
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => editor.chain().focus().redo().run()}

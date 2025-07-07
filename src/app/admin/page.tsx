@@ -75,6 +75,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
+import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
 
 type Resource = Tables<"resources"> & {
   categories: { name: string } | null;
@@ -171,18 +172,12 @@ export default function AdminDashboard() {
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Tables<"categories"> | null>(null);
   
-  // États pour le CRUD des ressources
-  const [newResource, setNewResource] = useState({
-    title: "",
-    content: "",
-    category_id: "",
-    is_public: true,
-    is_verified: false
-  });
+  // États pour le CRUD des ressources - simplifiés car maintenant géré par le composant
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
   const [deleteResourceDialogOpen, setDeleteResourceDialogOpen] = useState(false);
   const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null);
+  const [resourceFormLoading, setResourceFormLoading] = useState(false);
 
   // Ajout des états pour la gestion des rôles et de la suspension
   const [selectedUser, setSelectedUser] = useState<MergedUser | null>(null);
@@ -639,70 +634,99 @@ export default function AdminDashboard() {
     setCategoryDialogOpen(true);
   };
 
-  // Fonctions pour le CRUD des ressources
-  const handleCreateResource = async () => {
-    if (!newResource.title.trim()) return;
+  // Fonctions pour le CRUD des ressources - mise à jour pour utiliser le composant
+  const handleResourceSubmit = async (values: {
+    title: string;
+    content: string;
+    isPublic: boolean;
+    categoryId: number | null;
+  }) => {
+    setResourceFormLoading(true);
+    
+    try {
+      const supabase = createClient();
+      
+      if (editingResource) {
+        // Modification
+        const { data, error } = await supabase
+          .from("resources")
+          .update({
+            title: values.title.trim(),
+            content: values.content.trim() || null,
+            category_id: values.categoryId,
+            is_public: values.isPublic,
+            is_verified: editingResource.is_verified, // Garder le statut de vérification
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", editingResource.id)
+          .select(`
+            *,
+            categories(name),
+            users(firstname, lastname)
+          `)
+          .single();
 
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("resources")
-      .insert([{
-        title: newResource.title.trim(),
-        content: newResource.content.trim() || null,
-        category_id: newResource.category_id ? parseInt(newResource.category_id) : null,
-        is_public: newResource.is_public,
-        is_verified: newResource.is_verified,
-        owner_id: null // Sera défini par l'admin ou l'utilisateur connecté
-      }])
-      .select(`
-        *,
-        categories(name),
-        users(firstname, lastname)
-      `)
-      .single();
+        if (!error && data) {
+          setResources((prev) => 
+            prev.map((resource) => 
+              resource.id === editingResource.id 
+                ? { ...data, _count: resource._count } 
+                : resource
+            )
+          );
+          setEditingResource(null);
+          setResourceDialogOpen(false);
+          toast.success("Ressource modifiée avec succès");
+          loadDashboardData(); // Recharger les stats
+        } else {
+          toast.error("Erreur lors de la modification de la ressource");
+        }
+      } else {
+        // Création
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        const { data, error } = await supabase
+          .from("resources")
+          .insert([{
+            title: values.title.trim(),
+            content: values.content.trim() || null,
+            category_id: values.categoryId,
+            is_public: values.isPublic,
+            is_verified: true, // Les ressources créées par l'admin sont automatiquement vérifiées
+            owner_id: user?.id || null
+          }])
+          .select(`
+            *,
+            categories(name),
+            users(firstname, lastname)
+          `)
+          .single();
 
-    if (!error && data) {
-      setResources(prev => [{ ...data, _count: { views: 0, likes: 0, comments: 0 } }, ...prev]);
-      setNewResource({ title: "", content: "", category_id: "", is_public: true, is_verified: false });
-      setResourceDialogOpen(false);
-      loadDashboardData(); // Recharger les stats
+        if (!error && data) {
+          setResources(prev => [{ ...data, _count: { views: 0, likes: 0, comments: 0 } }, ...prev]);
+          setResourceDialogOpen(false);
+          toast.success("Ressource créée avec succès");
+          loadDashboardData(); // Recharger les stats
+        } else {
+          toast.error("Erreur lors de la création de la ressource");
+        }
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast.error("Une erreur inattendue s'est produite");
+    } finally {
+      setResourceFormLoading(false);
     }
   };
 
-  const handleUpdateResource = async () => {
-    if (!editingResource || !editingResource.title.trim()) return;
+  const openEditResourceDialog = (resource: Resource) => {
+    setEditingResource({ ...resource });
+    setResourceDialogOpen(true);
+  };
 
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("resources")
-      .update({
-        title: editingResource.title.trim(),
-        content: editingResource.content?.trim() || null,
-        category_id: editingResource.category_id,
-        is_public: editingResource.is_public,
-        is_verified: editingResource.is_verified,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", editingResource.id)
-      .select(`
-        *,
-        categories(name),
-        users(firstname, lastname)
-      `)
-      .single();
-
-    if (!error && data) {
-      setResources((prev) => 
-        prev.map((resource) => 
-          resource.id === editingResource.id 
-            ? { ...data, _count: resource._count } 
-            : resource
-        )
-      );
-      setEditingResource(null);
-      setResourceDialogOpen(false);
-      loadDashboardData(); // Recharger les stats
-    }
+  const openCreateResourceDialog = () => {
+    setEditingResource(null);
+    setResourceDialogOpen(true);
   };
 
   const handleDeleteResource = async () => {
@@ -727,19 +751,11 @@ export default function AdminDashboard() {
       setResources((prev) => prev.filter((resource) => resource.id !== resourceToDelete.id));
       setDeleteResourceDialogOpen(false);
       setResourceToDelete(null);
+      toast.success("Ressource supprimée avec succès");
       loadDashboardData(); // Recharger les stats
+    } else {
+      toast.error("Erreur lors de la suppression de la ressource");
     }
-  };
-
-  const openEditResourceDialog = (resource: Resource) => {
-    setEditingResource({ ...resource });
-    setResourceDialogOpen(true);
-  };
-
-  const openCreateResourceDialog = () => {
-    setEditingResource(null);
-    setNewResource({ title: "", content: "", category_id: "", is_public: true, is_verified: false });
-    setResourceDialogOpen(true);
   };
 
   // Fonction pour changer le rôle d'un utilisateur
@@ -1815,121 +1831,35 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog pour Créer/Modifier une ressource */}
+      {/* Dialog pour Créer/Modifier une ressource avec éditeur Tiptap */}
       <Dialog open={resourceDialogOpen} onOpenChange={setResourceDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingResource ? "Modifier la ressource" : "Nouvelle ressource"}
             </DialogTitle>
             <DialogDescription>
               {editingResource 
-                ? "Modifiez les informations de la ressource"
-                : "Créez une nouvelle ressource pour la plateforme"
+                ? "Modifiez les informations de la ressource avec l'éditeur enrichi"
+                : "Créez une nouvelle ressource pour la plateforme avec l'éditeur enrichi"
               }
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="resource-title">Titre de la ressource</Label>
-              <Input
-                id="resource-title"
-                value={editingResource ? editingResource.title : newResource.title}
-                onChange={(e) => {
-                  if (editingResource) {
-                    setEditingResource({ ...editingResource, title: e.target.value });
-                  } else {
-                    setNewResource({ ...newResource, title: e.target.value });
-                  }
-                }}
-                placeholder="Ex: Guide complet de React"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="resource-content">Contenu</Label>
-              <Textarea
-                id="resource-content"
-                value={editingResource ? editingResource.content || "" : newResource.content}
-                onChange={(e) => {
-                  if (editingResource) {
-                    setEditingResource({ ...editingResource, content: e.target.value });
-                  } else {
-                    setNewResource({ ...newResource, content: e.target.value });
-                  }
-                }}
-                placeholder="Décrivez la ressource..."
-                rows={6}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="resource-category">Catégorie</Label>
-              <Select
-                value={editingResource ? editingResource.category_id?.toString() || "none" : newResource.category_id || "none"}
-                onValueChange={(value) => {
-                  if (editingResource) {
-                    setEditingResource({ ...editingResource, category_id: value === "none" ? null : parseInt(value) });
-                  } else {
-                    setNewResource({ ...newResource, category_id: value === "none" ? "" : value });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez une catégorie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucune catégorie</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="resource-public"
-                  checked={editingResource ? editingResource.is_public : newResource.is_public}
-                  onChange={(e) => {
-                    if (editingResource) {
-                      setEditingResource({ ...editingResource, is_public: e.target.checked });
-                    } else {
-                      setNewResource({ ...newResource, is_public: e.target.checked });
-                    }
-                  }}
-                />
-                <Label htmlFor="resource-public">Ressource publique</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="resource-verified"
-                  checked={editingResource ? editingResource.is_verified : newResource.is_verified}
-                  onChange={(e) => {
-                    if (editingResource) {
-                      setEditingResource({ ...editingResource, is_verified: e.target.checked });
-                    } else {
-                      setNewResource({ ...newResource, is_verified: e.target.checked });
-                    }
-                  }}
-                />
-                <Label htmlFor="resource-verified">Ressource vérifiée</Label>
-              </div>
-            </div>
+          
+          <div className="py-4">
+            <AddOrEditResourceForm
+              initialValues={editingResource ? {
+                title: editingResource.title,
+                content: editingResource.content || "",
+                isPublic: editingResource.is_public,
+                categoryId: editingResource.category_id
+              } : undefined}
+              categories={categories.map(cat => ({ id: cat.id, name: cat.name }))}
+              loading={resourceFormLoading}
+              onSubmit={handleResourceSubmit}
+              onCancel={() => setResourceDialogOpen(false)}
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResourceDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={editingResource ? handleUpdateResource : handleCreateResource}
-              disabled={editingResource ? !editingResource.title.trim() : !newResource.title.trim()}
-            >
-              {editingResource ? "Modifier" : "Créer"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -147,7 +147,10 @@ export function BlogList({
                     )}
                   </div>
                   <h3 className="text-2xl font-semibold text-balance lg:text-3xl">{post.title}</h3>
-                  <p className="text-muted-foreground">{post.summary}</p>
+                  <div 
+                    className="text-muted-foreground prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: post.summary }}
+                  />
                   <div className="mt-3 flex items-center gap-2 text-sm">
                     <Avatar className="w-6 h-6">
                       <AvatarImage src={post.authorAvatarUrl} alt={post.author} />

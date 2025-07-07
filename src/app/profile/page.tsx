@@ -391,7 +391,10 @@ export default function ProfilePage() {
 														</span>
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
-													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+													<div 
+														className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
+														dangerouslySetInnerHTML={{ __html: post.summary }}
+													/>
 												</a>
 											))}
 										</div>
@@ -439,7 +442,10 @@ export default function ProfilePage() {
 														</span>
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
-													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+													<div 
+														className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
+														dangerouslySetInnerHTML={{ __html: post.summary }}
+													/>
 												</a>
 											))}
 										</div>
@@ -487,7 +493,10 @@ export default function ProfilePage() {
 														</span>
 													</div>
 													<h3 className="font-semibold mb-1">{post.title}</h3>
-													<p className="text-sm text-muted-foreground line-clamp-2">{post.summary}</p>
+													<div 
+														className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
+														dangerouslySetInnerHTML={{ __html: post.summary }}
+													/>
 												</a>
 											))}
 										</div>
