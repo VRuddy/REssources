@@ -21,6 +21,7 @@ export interface ChatMessage {
 }
 
 const EVENT_MESSAGE_TYPE = 'message'
+const EVENT_DELETE_TYPE = 'delete'
 
 export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeChatProps) {
   const supabase = createClient()
@@ -33,7 +34,15 @@ export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeCh
 
     newChannel
       .on('broadcast', { event: EVENT_MESSAGE_TYPE }, (payload) => {
-        setMessages((current) => [...current, payload.payload as ChatMessage])
+        setMessages((current) => {
+          // Éviter les doublons en vérifiant si le message existe déjà
+          const messageExists = current.some(msg => msg.id === payload.payload.id)
+          if (messageExists) return current
+          return [...current, payload.payload as ChatMessage]
+        })
+      })
+      .on('broadcast', { event: EVENT_DELETE_TYPE }, (payload) => {
+        setMessages((current) => current.filter(msg => msg.id !== payload.payload.id))
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -52,8 +61,11 @@ export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeCh
     async (content: string, parent_comment_id?: number | null) => {
       if (!channel || !isConnected) return
 
+      // Générer un ID temporaire unique avec timestamp + random
+      const tempId = Date.now() + Math.random()
+      
       const message: ChatMessage = {
-        id: Date.now(), // temp id, will be replaced by DB id if needed
+        id: tempId,
         content,
         user: {
           name: username,
@@ -62,7 +74,11 @@ export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeCh
         createdAt: new Date().toISOString(),
         parent_comment_id: parent_comment_id ?? null,
       }
+      
+      // Ajouter le message localement immédiatement (optimistic update)
       setMessages((current) => [...current, message])
+      
+      // Envoyer via WebSocket
       await channel.send({
         type: 'broadcast',
         event: EVENT_MESSAGE_TYPE,
@@ -72,5 +88,22 @@ export function useRealtimeChat({ roomName, username, avatarUrl }: UseRealtimeCh
     [channel, isConnected, username, avatarUrl]
   )
 
-  return { messages, sendMessage, isConnected }
+  const deleteMessage = useCallback(
+    async (messageId: number) => {
+      if (!channel || !isConnected) return
+
+      // Supprimer localement immédiatement (optimistic update)
+      setMessages((current) => current.filter(msg => msg.id !== messageId))
+      
+      // Envoyer l'événement de suppression via WebSocket
+      await channel.send({
+        type: 'broadcast',
+        event: EVENT_DELETE_TYPE,
+        payload: { id: messageId },
+      })
+    },
+    [channel, isConnected]
+  )
+
+  return { messages, sendMessage, deleteMessage, isConnected }
 }

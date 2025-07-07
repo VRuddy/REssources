@@ -51,41 +51,40 @@ export const RealtimeChat = ({
   const {
     messages: realtimeMessages,
     sendMessage,
+    deleteMessage,
     isConnected,
   } = useRealtimeChat({
     roomName,
     username,
     avatarUrl,
   })
+  
   const [newMessage, setNewMessage] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set())
   const previousMessageCount = useRef(0)
   const shouldScrollToBottom = useRef(true)
 
-  // Utilisation d'un state local pour les messages (optimistic update simple)
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(initialMessages);
-
-  useEffect(() => {
-    setLocalMessages(initialMessages);
-  }, [initialMessages]);
-
-  // Merge realtime messages with initial messages
+  // Fusionner les messages initiaux avec les messages temps réel
   const allMessages = useMemo(() => {
-    const mergedMessages = [...localMessages, ...realtimeMessages]
-    // Remove duplicates based on message id
-    const uniqueMessages = mergedMessages.filter(
-      (message, index, self) => index === self.findIndex((m) => m.id === message.id)
-    )
-    // Sort by creation date (chronological order)
-    const sortedMessages = uniqueMessages.sort((a, b) => {
+    // Commencer avec les messages initiaux
+    const baseMessages = [...initialMessages]
+    
+    // Ajouter les messages temps réel en évitant les doublons
+    realtimeMessages.forEach(realtimeMsg => {
+      const exists = baseMessages.some(msg => msg.id === realtimeMsg.id)
+      if (!exists) {
+        baseMessages.push(realtimeMsg)
+      }
+    })
+    
+    // Trier par date de création
+    return baseMessages.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime()
       const dateB = new Date(b.createdAt).getTime()
       return dateA - dateB
     })
-
-    return sortedMessages
-  }, [localMessages, realtimeMessages])
+  }, [initialMessages, realtimeMessages])
 
   useEffect(() => {
     if (onMessage) {
@@ -109,16 +108,19 @@ export const RealtimeChat = ({
       // Activer le scroll automatique lors de l'envoi d'un message
       shouldScrollToBottom.current = true;
 
+      // Envoyer le message via WebSocket (optimistic update)
       sendMessage(newMessage, replyTo);
-      // Enregistre le message dans Supabase avec horodatage
+      
+      // Enregistre le message dans Supabase
       const supabase = createClient();
       await supabase.from('comments').insert({
         author_id: userId,
         resource_id: resourceId,
         content: newMessage,
         parent_comment_id: replyTo ?? null,
-        created_at: new Date().toISOString(), // Ajouter horodatage explicite
+        created_at: new Date().toISOString(),
       });
+      
       setNewMessage('');
       setReplyTo(null);
     },
@@ -166,22 +168,21 @@ export const RealtimeChat = ({
     setReplyTo(messageId);
   }, [])
 
-  // Ajout d'un état local pour forcer le refresh après suppression
-
   // Fonction pour supprimer un commentaire
   const handleDeleteMessage = useCallback(
     async (messageId: number) => {
-      // Optimistic update: retire le message du state local
-      setLocalMessages((msgs) => msgs.filter((msg) => msg.id !== messageId));
-      // Suppression en base (et on attend la réponse)
+      // Supprimer via WebSocket (optimistic update)
+      deleteMessage(messageId);
+      
+      // Suppression en base
       const supabase = createClient();
       const { error } = await supabase.from('comments').delete().eq('id', messageId);
       if (error) {
-        alert("Erreur lors de la suppression du commentaire.");
-        // Optionnel : tu pourrais recharger les messages ou réafficher le message supprimé
+        console.error("Erreur lors de la suppression du commentaire:", error);
+        // Optionnel : recharger les messages en cas d'erreur
       }
     },
-    []
+    [deleteMessage]
   )
 
   // Composant récursif pour afficher les threads (limité à 1 niveau)
