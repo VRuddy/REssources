@@ -62,7 +62,7 @@ export default function Navbar1({
     url: "/",
     src: "/logo-resource.png",
     alt: "logo",
-    title: "Ressources",
+    title: "(Re)sources",
   },
   menu = [
     { title: "Accueil", url: "/" },
@@ -98,7 +98,7 @@ export default function Navbar1({
         <nav className="hidden justify-between lg:flex">
           <div className="flex items-center gap-6">
             {/* Logo */}
-            <Link href={logo.url} className="flex items-center gap-2">
+            <Link href={isAuthenticated ? "/blog-list" : logo.url} className="flex items-center gap-2">
               <Image src={logo.src} width={32} height={32} alt={logo.alt} />
               <span className="text-lg font-semibold tracking-tighter">
                 {logo.title}
@@ -107,7 +107,10 @@ export default function Navbar1({
             <div className="flex items-center">
               <NavigationMenu>
                 <NavigationMenuList>
-                  {menu.map((item) => renderMenuItem(item))}
+                  {(isAuthenticated
+                    ? menu.filter((item) => item.title !== "Accueil")
+                    : menu
+                  ).map((item) => renderMenuItem(item))}
                 </NavigationMenuList>
               </NavigationMenu>
             </div>
@@ -137,7 +140,7 @@ export default function Navbar1({
         <div className="block lg:hidden">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link href={logo.url} className="flex items-center gap-2">
+            <Link href={isAuthenticated ? "/blog-list" : logo.url} className="flex items-center gap-2">
               <Image src={logo.src} width={32} height={32} alt={logo.alt} />
             </Link>
             <Sheet open={open} onOpenChange={setOpen}>
@@ -150,7 +153,7 @@ export default function Navbar1({
                 <SheetHeader>
                   <SheetTitle>
                     <Link
-                      href={logo.url}
+                      href={isAuthenticated ? "/blog-list" : logo.url}
                       className="flex items-center gap-2"
                       onClick={() => setOpen(false)}
                     >
@@ -164,7 +167,10 @@ export default function Navbar1({
                     collapsible
                     className="flex w-full flex-col gap-4"
                   >
-                    {menu.map((item) => renderMobileMenuItem(item, setOpen))}
+                    {(isAuthenticated
+                      ? menu.filter((item) => item.title !== "Accueil")
+                      : menu
+                    ).map((item) => renderMobileMenuItem(item, setOpen))}
                   </Accordion>
 
                   <div className="flex flex-col gap-3">

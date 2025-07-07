@@ -190,6 +190,11 @@ export default function AdminDashboard() {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [roles, setRoles] = useState<Tables<"roles">[]>([]);
 
+  // États pour l'authentification
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<string>("");
+
   // Fonction pour recharger les utilisateurs fusionnés
   const fetchMergedUsers = async () => {
     setLoading(true);
@@ -209,6 +214,29 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+  }, []);
+
+  // Vérification de l'authentification et du rôle
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        setIsAuthenticated(false);
+        return;
+      }
+      setIsAuthenticated(true);
+      // Récupérer le rôle de l'utilisateur
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role_id, roles(name)")
+        .eq("id", data.user.id)
+        .single();
+      const roleName = userData?.roles?.name || "";
+      setUserRole(roleName);
+      setIsAdmin(roleName === "admin" || roleName === "super-admin");
+    };
+    checkAuth();
   }, []);
 
   // Charger les rôles au montage
@@ -1034,6 +1062,28 @@ export default function AdminDashboard() {
     );
   }
 
+  if (isAuthenticated === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold mb-2">Accès refusé</div>
+          <div className="text-muted-foreground">Vous devez être connecté pour accéder à cette page.</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && !isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold mb-2">Accès refusé</div>
+          <div className="text-muted-foreground">Vous n'avez pas les droits administrateur pour accéder à cette page.</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
@@ -1505,9 +1555,9 @@ export default function AdminDashboard() {
                         {user.email}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {user.roles?.name || "Utilisateur"}
-                        </Badge>
+<Badge variant="outline">
+                        {user.roles?.name || "Utilisateur"}
+</Badge>
                       </TableCell>
                       <TableCell>
                         {user._count?.resources || 0} ressources
@@ -1564,16 +1614,18 @@ export default function AdminDashboard() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setSelectedRole(user.role_id?.toString() || "");
-                                setIsRoleDialogOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Modifier le rôle
-                            </DropdownMenuItem>
+                            {userRole === "super-admin" && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setSelectedRole(user.role_id?.toString() || "");
+                                  setIsRoleDialogOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Modifier le rôle
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => {
                                 if (user.banned_until) {
