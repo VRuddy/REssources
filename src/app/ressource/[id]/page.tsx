@@ -151,7 +151,7 @@ export default async function BlogPostPage({params}: {params: Promise<{ id: stri
           avatarUrl: post.owner_id ? avatarMap.get(post.owner_id) : undefined,
           role: "Auteur",
         }}
-        date={post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}
+        date={post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
         categories={post.categories?.name ? [post.categories.name] : []}
         breadcrumbs={[
           { label: "Ressources", href: "/ressources" },
