@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, X, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 interface RealtimeChatProps {
   roomName: string;
@@ -95,6 +94,7 @@ export const RealtimeChat = ({
 
   const {
     sendMessage,
+    deleteMessage,
     isConnected,
   } = useRealtimeChat({
     roomName,
@@ -191,19 +191,31 @@ export const RealtimeChat = ({
   // Fonction pour supprimer un commentaire
   const handleDeleteMessage = useCallback(
     async (messageId: number) => {
-      // Optimistic update: retire le message du state unifié
-      setAllMessages((msgs) => msgs.filter((msg) => msg.id !== messageId));
-      
-      // Suppression en base (et on attend la réponse)
-      const supabase = createClient();
-      const { error } = await supabase.from('comments').delete().eq('id', messageId);
-      if (error) {
+      try {
+        // Fonction pour récupérer tous les IDs des messages enfants récursivement
+        const getChildMessageIds = (parentId: number, messages: ChatMessage[]): number[] => {
+          const children = messages.filter(msg => msg.parent_comment_id === parentId);
+          const childIds = children.map(child => child.id);
+          const grandChildIds = children.flatMap(child => getChildMessageIds(child.id, messages));
+          return [...childIds, ...grandChildIds];
+        };
+        
+        // Récupérer tous les IDs des messages à supprimer (parent + enfants)
+        const childIds = getChildMessageIds(messageId, allMessages);
+        const messagesToDelete = [messageId, ...childIds];
+        
+        // Optimistic update: retirer tous les messages du state unifié
+        setAllMessages((msgs) => msgs.filter((msg) => !messagesToDelete.includes(msg.id)));
+        
+        // Utiliser la fonction du hook qui synchronise en temps réel
+        await deleteMessage(messageId);
+      } catch (error) {
         console.error("Erreur lors de la suppression du commentaire:", error);
         alert("Erreur lors de la suppression du commentaire.");
         // Optionnel : recharger les messages depuis la base de données
       }
     },
-    []
+    [deleteMessage, allMessages]
   )
 
   // Composant récursif pour afficher les threads (limité à 1 niveau)
