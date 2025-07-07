@@ -114,7 +114,7 @@ const Blog7 = ({
                 </h3>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-muted-foreground leading-relaxed">{post.summary}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.summary }}></p>
               </CardContent>
               <CardFooter className="pt-4">
                 <Link
