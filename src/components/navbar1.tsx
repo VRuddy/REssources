@@ -75,7 +75,6 @@ export default function Navbar1({
 }: Navbar1Props) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [open, setOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -94,11 +93,9 @@ export default function Navbar1({
           .single();
         
         const roleName = userData?.roles?.name || null;
-        setUserRole(roleName);
         setIsAdmin(roleName === "admin" || roleName === "super-admin");
       } else {
         setIsAuthenticated(false);
-        setUserRole(null);
         setIsAdmin(false);
       }
     };
@@ -111,7 +108,6 @@ export default function Navbar1({
           checkAuth();
         } else {
           setIsAuthenticated(false);
-          setUserRole(null);
           setIsAdmin(false);
         }
       }

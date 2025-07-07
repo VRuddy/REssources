@@ -1078,7 +1078,7 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="text-2xl font-bold mb-2">Accès refusé</div>
-          <div className="text-muted-foreground">Vous n'avez pas les droits administrateur pour accéder à cette page.</div>
+          <div className="text-muted-foreground">Vous n`&apos;`avez pas les droits administrateur pour accéder à cette page.</div>
         </div>
       </div>
     );
