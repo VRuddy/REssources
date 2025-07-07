@@ -33,7 +33,7 @@ export default function ProfilePage() {
 	const [user, setUser] = useState<SupabaseUser | null>(null);
 	const [checkingAuth, setCheckingAuth] = useState(true);
 
-	// Nouvelle fonction pour récupérer l'utilisateur ET son profil
+	// Nouvelle fonction pour récupérer l'utilisateur ET son profil 
 	const fetchUserWithProfile = async () => {
 		const supabase = createClient();
 		const { data } = await supabase.auth.getUser();
@@ -82,7 +82,7 @@ export default function ProfilePage() {
 				.select("*", { count: "exact", head: true })
 				.eq("user_id", user.id);
 			
-			// Compter les likées
+			// Compter les likées all resources liked by the user
 			const { count: likedCount } = await supabase
 				.from("likes")
 				.select("*", { count: "exact", head: true })
