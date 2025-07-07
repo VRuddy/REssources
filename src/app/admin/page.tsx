@@ -75,7 +75,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
-import { AddOrEditResourceForm } from "@/components/blog-list/AddOrEditResourceForm";
+import { AddOrEditResourceForm } from "@/components/ressources/AddOrEditResourceForm";
 
 type Resource = Tables<"resources"> & {
   categories: { name: string } | null;
